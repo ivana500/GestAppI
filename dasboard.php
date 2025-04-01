@@ -8,6 +8,11 @@ if (!isset($_SESSION['nom']) || !isset($_SESSION['prenom'])) {
 
 $nom = $_SESSION['nom'];
 $prenom = $_SESSION['prenom'];
+if (!isset($_SESSION['theme'])) {
+    $_SESSION['theme'] = 'light';  
+}
+
+$themeClass = $_SESSION['theme'] === 'dark' ? 'dark-theme' : 'light-theme';
 ?>
 
 <?php
@@ -98,10 +103,18 @@ closeConnection($conn);
     <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link href="fontawesome/css/all.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/simple-datatables@7.1.2/dist/style.min.css" rel="stylesheet" />
-    <link href="css/styles.css" rel="stylesheet" />
     <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
     <style>
-        /* Style personnalisé */
+         .light-theme {
+            background-color: white;
+            color: #333;
+        }
+
+        .dark-theme {
+            background-color: #333;
+            color: #f8f9fa;
+        }
+
         .sidebar {
             background-color: black; 
             width: 300px;
@@ -153,7 +166,7 @@ closeConnection($conn);
 }
     </style>
 </head>
-<body class="sb-nav-fixed">
+<body class="<?php echo $themeClass; ?>">    
     <!-- Navbar -->
     <header class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
         <div class="container-fluid d-flex justify-content-between align-items-center">
@@ -195,10 +208,9 @@ closeConnection($conn);
             </div>
         </div>
 
-        <!-- Main content -->
         <div class="content">
-            <main>
-                <div class="container-fluid px-4">
+        <body class="<?php echo $themeClass; ?>">    
+        <div class="container-fluid px-4">
                     <h1 class="mt-4">Dashboard</h1>
                     <ol class="breadcrumb mb-4">
                         <li class="breadcrumb-item active">Dashboard</li>
@@ -322,7 +334,6 @@ closeConnection($conn);
                 </div>
             </main>
 
-            <!-- Footer -->
             <footer class="py-4 bg-light mt-auto">
                 <div class="container-fluid px-4">
                     <div class="d-flex align-items-center justify-content-between small">

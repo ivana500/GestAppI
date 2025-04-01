@@ -8,6 +8,11 @@ if (!isset($_SESSION['nom']) || !isset($_SESSION['prenom'])) {
 
 $nom = $_SESSION['nom'];
 $prenom = $_SESSION['prenom'];
+if (!isset($_SESSION['theme'])) {
+    $_SESSION['theme'] = 'light';  
+}
+
+$themeClass = $_SESSION['theme'] === 'dark' ? 'dark-theme' : 'light-theme';
 ?>
 
 <?php
@@ -105,8 +110,17 @@ closeConnection($conn);
     <title>Dashboard Admin</title>
     <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link href="fontawesome/css/all.css" rel="stylesheet">
-    <link href="css/styles.css" rel="stylesheet" />
     <style>
+        .light-theme {
+            background-color: white;
+            color: #333;
+        }
+
+        .dark-theme {
+            background-color: #333;
+            color: #f8f9fa;
+        }
+
        
 .sidebar {
     background-color: black; 
@@ -143,6 +157,10 @@ closeConnection($conn);
 }
 
 
+.search-bar {
+    margin-left: auto;
+    padding: 5px 10px;
+}
 
 
 table, th, td {
@@ -170,13 +188,14 @@ table th:hover {
      <header class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
         <div class="container-fluid d-flex justify-content-between align-items-center">
         <form method="POST" class="d-none d-md-inline-block form-inline ms-auto me-0 me-md-3 my-2 my-md-0">
-    <div class="input-group">
-        <input class="form-control" type="text" name="search" placeholder="Rechercher par nom, prénom, email, etc." value="<?= isset($_POST['search']) ? htmlspecialchars($_POST['search']) : '' ?>" />
-        <button class="btn btn-primary" type="submit">
-            <i class="fas fa-search"></i>
-        </button>
-    </div>
+  <div class="input-group">
+      <input class="form-control" type="text" name="search" placeholder="Rechercher par nom, prénom, email, etc." value="<?= isset($_POST['search']) ? htmlspecialchars($_POST['search']) : '' ?>" />
+      <button class="btn btn-primary" type="submit">
+          <i class="fas fa-search"></i>
+      </button>
+  </div>
 </form>
+
 
 
             <div class="d-flex align-items-center text-light text-bold">
@@ -196,10 +215,10 @@ table th:hover {
         <a href="acceuil.php" style="text-decoration: none; color: white;">ADMINISTRATEUR</a>
     </h4>
 
-    <div class="d-flex justify-content-center mb-3  ">
+    <div class="d-flex justify-content-center mb-3">
     <a class="nav-link" href="dasboard.php">
     <img src="images/stephan.png" alt="User" class="rounded-circle" style="width: 80px; height: 80px;">
-</a>      </div>
+</a>          </div>
 
     <div class="nav flex-column">
         <li class="nav-item mb-3">
@@ -257,7 +276,7 @@ table th:hover {
 </div>
         
 </head>
-<body>
+<body class="<?php echo $themeClass; ?>">    
 <div class="container my-5">
         <h1 class="text-center text-bold text-dark">Liste des Formateurs</h1>
         

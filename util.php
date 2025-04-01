@@ -8,6 +8,11 @@ if (!isset($_SESSION['nom']) || !isset($_SESSION['prenom'])) {
 
 $nom = $_SESSION['nom'];
 $prenom = $_SESSION['prenom'];
+if (!isset($_SESSION['theme'])) {
+    $_SESSION['theme'] = 'light';  
+}
+
+$themeClass = $_SESSION['theme'] === 'dark' ? 'dark-theme' : 'light-theme';
 ?>
 <?php
 require_once 'Fonctions/db_connection.php';

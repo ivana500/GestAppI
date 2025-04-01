@@ -8,6 +8,12 @@ if (!isset($_SESSION['nom']) || !isset($_SESSION['prenom'])) {
 
 $nom = $_SESSION['nom'];
 $prenom = $_SESSION['prenom'];
+
+if (!isset($_SESSION['theme'])) {
+    $_SESSION['theme'] = 'light';  
+}
+
+$themeClass = $_SESSION['theme'] === 'dark' ? 'dark-theme' : 'light-theme';
 ?>
 <?php
 require_once 'Fonctions/db_connection.php';
@@ -67,8 +73,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <title>Dashboard Admin</title>
     <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link href="fontawesome/css/all.css" rel="stylesheet">
-    <link href="css/styles.css" rel="stylesheet" />
     <style>
+        .light-theme {
+            background-color: white;
+            color: #333;
+        }
+
+        .dark-theme {
+            background-color: #333;
+            color: #f8f9fa;
+        }
+
        
 .sidebar {
     background-color: black; 
@@ -224,8 +239,7 @@ table th:hover {
 </div>
         
 </head>
-<body>
-   
+<body class="<?php echo $themeClass; ?>">    
 
         <div class="container my-5">
         <h1 class="text-center text-bold text-dark">Liste des Apprenants</h1>
