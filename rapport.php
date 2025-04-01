@@ -11,35 +11,133 @@ $prenom = $_SESSION['prenom'];
 ?>
 
 <?php
-$assiduiteData = [
-    ['name' => 'Jean Dupont', 'presence' => 20, 'absence' => 5],
-    ['name' => 'Marie Lemoine', 'presence' => 18, 'absence' => 7],
-    ['name' => 'Pierre Martin', 'presence' => 22, 'absence' => 3],
-];
+require_once 'Fonctions/db_connection.php';
 
-$performancesData = [
-    ['name' => 'Jean Dupont', 'performance' => 85],
-    ['name' => 'Marie Lemoine', 'performance' => 75],
-    ['name' => 'Pierre Martin', 'performance' => 90],
-];
+// Connexion à la base de données
+$conn = getConnection();
 
-$financierData = [
-    ['name' => 'Jean Dupont', 'montant' => 150],
-    ['name' => 'Marie Lemoine', 'montant' => 200],
-    ['name' => 'Pierre Martin', 'montant' => 120],
-];
+// Initialiser les variables
+$rapportType = "";
+$reportData = [];
 
-// Set the report type and data based on the selection
-$rapportType = isset($_POST['rapportType']) ? $_POST['rapportType'] : '';
-$reportData = null;
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    if (isset($_POST['rapportType']) && !empty($_POST['rapportType'])) {
+        $rapportType = $_POST['rapportType'];
+    }
+}
 
+// Cas pour le rapport "assiduité"
 if ($rapportType === 'assiduite') {
-    $reportData = $assiduiteData;
-} elseif ($rapportType === 'performances') {
-    $reportData = $performancesData;
-} elseif ($rapportType === 'financier') {
+    $searchQuery = "";
+    if (isset($_POST['search'])) {
+        $searchQuery = $_POST['search'];
+    }
+
+    $sql = "SELECT A.idAp, A.idC, A.date, A.present, 
+                P.nomAp AS nomAp, P.prenomAp AS prenomAp, 
+                C.titreC,
+                I.montant AS montant
+            FROM suivieCours A
+            JOIN Apprenant P ON A.idAp = P.code
+            JOIN Cours C ON A.idC = C.idC
+            LEFT JOIN inscription I ON A.idAp = I.idAp";
+
+    if ($searchQuery != "") {
+        $sql .= " WHERE (P.nomAp LIKE ? OR P.prenomAp LIKE ? OR C.titreC LIKE ? OR A.date LIKE ?)";
+    }
+
+    $stmt = $conn->prepare($sql);
+    if ($stmt === false) {
+        die("Erreur dans la préparation de la requête SQL.");
+    }
+
+    if ($searchQuery != "") {
+        $searchTerm = "%" . $searchQuery . "%";
+        $stmt->bind_param("ssss", $searchTerm, $searchTerm, $searchTerm, $searchTerm);
+    }
+
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $assiduites = [];
+    if ($result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            $assiduites[] = $row;
+        }
+    }
+
+    if (isset($stmt)) {
+        $stmt->close();
+    }
+
+    $reportData = $assiduites;
+}
+
+// Cas pour le rapport "performance"
+if ($rapportType === 'performances') {
+    $sql = "SELECT P.nomAp, P.prenomAp, COUNT(A.present) AS presentCount, COUNT(C.idC) AS totalCours
+            FROM suivieCours A
+            JOIN Apprenant P ON A.idAp = P.code
+            JOIN Cours C ON A.idC = C.idC
+            GROUP BY P.code";
+
+    $stmt = $conn->prepare($sql);
+    if ($stmt === false) {
+        die("Erreur dans la préparation de la requête SQL.");
+    }
+
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $performances = [];
+    if ($result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            $totalCours = $row['totalCours'];
+            $presentCount = $row['presentCount'];
+
+            $performance = $totalCours > 0 ? ($presentCount / $totalCours) * 100 : 0;
+            $row['performance'] = $performance;
+
+            $performances[] = $row;
+        }
+    }
+
+    if (isset($stmt)) {
+        $stmt->close();
+    }
+
+    $reportData = $performances;
+}
+
+// Cas pour le rapport "financier"
+if ($rapportType === 'financier') {
+    $sql = "SELECT P.nomAp, P.prenomAp, I.montant
+            FROM Apprenant P
+            LEFT JOIN inscription I ON P.code = I.idAp";
+
+    $stmt = $conn->prepare($sql);
+    if ($stmt === false) {
+        die("Erreur dans la préparation de la requête SQL.");
+    }
+
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $financierData = [];
+    if ($result->num_rows > 0) {
+        while ($row = $result->fetch_assoc()) {
+            $financierData[] = $row;
+        }
+    }
+
+    if (isset($stmt)) {
+        $stmt->close();
+    }
+
     $reportData = $financierData;
 }
+
+closeConnection($conn);
 ?>
 
 <!DOCTYPE html>
@@ -138,8 +236,9 @@ table th:hover {
     </h4>
 
     <div class="d-flex justify-content-center mb-3  ">
-        <img src="images/stephan.png" alt="User" class="rounded-circle" style="width: 60px; height: 60px;">
-    </div>
+    <a class="nav-link" href="dasboard.php">
+    <img src="images/stephan.png" alt="User" class="rounded-circle" style="width: 80px; height: 80px;">
+</a>      </div>
 
     <div class="nav flex-column">
         <li class="nav-item mb-3">
@@ -203,111 +302,116 @@ table th:hover {
 
         <!-- Report Selection Form -->
         <form method="POST" action="rapport.php">
-            <div class="mb-4">
-                <label for="rapportType" class="form-label">Choisir un Rapport</label>
-                <select class="form-select" id="rapportType" name="rapportType">
-                    <option value="">Sélectionner un type de rapport</option>
-                    <option value="assiduite" <?php echo $rapportType === 'assiduite' ? 'selected' : ''; ?>>Assiduité</option>
-                    <option value="performances" <?php echo $rapportType === 'performances' ? 'selected' : ''; ?>>Performances</option>
-                    <option value="financier" <?php echo $rapportType === 'financier' ? 'selected' : ''; ?>>Financier</option>
-                </select>
-            </div>
+    <div class="mb-4">
+        <label for="rapportType" class="form-label">Choisir un Rapport</label>
+        <select class="form-select" id="rapportType" name="rapportType">
+            <option value="">Sélectionner un type de rapport</option>
+            <option value="assiduite" <?php echo $rapportType === 'assiduite' ? 'selected' : ''; ?>>Assiduité</option>
+            <option value="performances" <?php echo $rapportType === 'performances' ? 'selected' : ''; ?>>Performances</option>
+            <option value="financier" <?php echo $rapportType === 'financier' ? 'selected' : ''; ?>>Financier</option>
+        </select>
+    </div>
+    <button type="submit" class="btn btn-primary mb-4">Générer Rapport</button>
+</form>
 
-            <button type="submit" class="btn btn-primary mb-4">Générer Rapport</button>
-        </form>
+<?php if ($rapportType): ?>
+    <?php if ($rapportType === 'assiduite'): ?>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Nom</th>
+                    <th>Prénom</th>
+                    <th>Cours</th>
+                    <th>Date</th>
+                    <th>Présence</th>
+                    <th>Montant</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($reportData as $assiduite): ?>
+                    <tr>
+                        <td><?php echo $assiduite['nomAp']; ?></td>
+                        <td><?php echo $assiduite['prenomAp']; ?></td>
+                        <td><?php echo $assiduite['titreC']; ?></td>
+                        <td><?php echo $assiduite['date']; ?></td>
+                        <td><?php echo $assiduite['present'] == 1 ? 'Présent' : 'Absent'; ?></td>
+                        <td><?php echo $assiduite['montant']; ?> FCFA</td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    <?php elseif ($rapportType === 'performances'): ?>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Nom</th>
+                    <th>Performance (%)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($reportData as $performance): ?>
+                    <tr>
+                        <td><?php echo $performance['nomAp']; ?></td>
+                        <td><?php echo number_format($performance['performance'], 2); ?>%</td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
 
-        <!-- Render Report Data -->
-        <?php if ($reportData): ?>
-            <?php if ($rapportType === 'assiduite'): ?>
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Nom</th>
-                            <th>Présences</th>
-                            <th>Absences</th>
-                            <th>% Présence</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($reportData as $item): ?>
-                            <tr>
-                                <td><?php echo $item['name']; ?></td>
-                                <td><?php echo $item['presence']; ?></td>
-                                <td><?php echo $item['absence']; ?></td>
-                                <td><?php echo number_format(($item['presence'] / ($item['presence'] + $item['absence'])) * 100, 2); ?>%</td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            <?php elseif ($rapportType === 'performances'): ?>
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Nom</th>
-                            <th>Performance (%)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($reportData as $item): ?>
-                            <tr>
-                                <td><?php echo $item['name']; ?></td>
-                                <td><?php echo $item['performance']; ?>%</td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-
-                <!-- Chart for performances -->
-                <canvas id="performanceChart"></canvas>
-                <script>
-                    const performanceData = <?php echo json_encode($performancesData); ?>;
-                    const ctx = document.getElementById('performanceChart').getContext('2d');
-                    const performanceChart = new Chart(ctx, {
-                        type: 'bar',
-                        data: {
-                            labels: performanceData.map(item => item.name),
-                            datasets: [{
-                                label: 'Performance (%)',
-                                data: performanceData.map(item => item.performance),
-                                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                                borderColor: 'rgba(75, 192, 192, 1)',
-                                borderWidth: 1
-                            }]
+        <!-- Chart for performances -->
+        <canvas id="performanceChart"></canvas>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script>
+            const performanceData = <?php echo json_encode($reportData); ?>;
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            const performanceChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: performanceData.map(item => item.nomAp), // Récupère les noms des apprenants
+                    datasets: [{
+                        label: 'Performance (%)',
+                        data: performanceData.map(item => item.performance), // Récupère la performance de chaque apprenant
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
                         },
-                        options: {
-                            responsive: true,
-                            plugins: {
-                                legend: {
-                                    position: 'top',
-                                },
-                                tooltip: {
-                                    enabled: true,
-                                }
-                            }
+                        tooltip: {
+                            enabled: true,
                         }
-                    });
-                </script>
-            <?php elseif ($rapportType === 'financier'): ?>
-                <table class="table table-striped">
-                    <thead>
-                        <tr>
-                            <th>Nom</th>
-                            <th>Montant (FCFA)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach ($reportData as $item): ?>
-                            <tr>
-                                <td><?php echo $item['name']; ?></td>
-                                <td><?php echo $item['montant']; ?> FCFA</td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            <?php endif; ?>
-        <?php elseif ($rapportType): ?>
-            <p>Aucun rapport à afficher. Veuillez sélectionner un rapport.</p>
-        <?php endif; ?>
+                    }
+                }
+            });
+        </script>
+    <?php elseif ($rapportType === 'financier'): ?>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Nom</th>
+                    <th>Montant (FCFA)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php foreach ($reportData as $item): ?>
+                    <tr>
+                        <td><?php echo $item['nomAp']; ?></td>
+                        <td><?php echo $item['montant']; ?> FCFA</td>
+                    </tr>
+                <?php endforeach; ?>
+            </tbody>
+        </table>
+    <?php endif; ?>
+<?php else: ?>
+    <p>Aucun rapport à afficher. Veuillez sélectionner un rapport.</p>
+<?php endif; ?>
+
+
     </div>
 </body>
 </html>

@@ -212,8 +212,9 @@ table th:hover {
     </h4>
 
     <div class="d-flex justify-content-center mb-3  ">
-        <img src="images/stephan.png" alt="User" class="rounded-circle" style="width: 60px; height: 60px;">
-    </div>
+    <a class="nav-link" href="dasboard.php">
+    <img src="images/stephan.png" alt="User" class="rounded-circle" style="width: 80px; height: 80px;">
+</a>      </div>
 
     <div class="nav flex-column">
         <li class="nav-item mb-3">

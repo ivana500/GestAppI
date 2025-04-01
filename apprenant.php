@@ -105,6 +105,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 
+.search-bar {
+    margin-left: auto;
+    padding: 5px 10px;
+}
 
 
 table, th, td {
@@ -132,13 +136,15 @@ table th:hover {
      <header class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
         <div class="container-fluid d-flex justify-content-between align-items-center">
         <form method="POST" class="d-none d-md-inline-block form-inline ms-auto me-0 me-md-3 my-2 my-md-0">
-    <div class="input-group">
-        <input class="form-control" type="text" name="search" placeholder="Rechercher par nom, prénom, email, etc." value="<?= isset($_POST['search']) ? htmlspecialchars($_POST['search']) : '' ?>" />
-        <button class="btn btn-primary" type="submit">
-            <i class="fas fa-search"></i>
-        </button>
-    </div>
+  <div class="input-group">
+      <input class="form-control" type="text" name="search" placeholder="Rechercher par nom, prénom, email, etc." value="<?= isset($_POST['search']) ? htmlspecialchars($_POST['search']) : '' ?>" />
+      <button class="btn btn-primary" type="submit">
+          <i class="fas fa-search"></i>
+      </button>
+  </div>
 </form>
+
+
 
             <div class="d-flex align-items-center text-light text-bold">
                 <span><?php echo $nom . ' ' . $prenom; ?></span>
@@ -157,9 +163,11 @@ table th:hover {
         <a href="acceuil.php" style="text-decoration: none; color: white;">ADMINISTRATEUR</a>
     </h4>
 
-    <div class="d-flex justify-content-center mb-3  ">
-        <img src="images/stephan.png" alt="User" class="rounded-circle" style="width: 60px; height: 60px;">
-    </div>
+    <div class="d-flex justify-content-center mb-3">
+    <a class="nav-link" href="dasboard.php">
+    <img src="images/stephan.png" alt="User" class="rounded-circle" style="width: 80px; height: 80px;">
+</a>          </div>
+
     <div class="nav flex-column">
         <li class="nav-item mb-3">
         <a class="nav-link text-light " href="apprenant.php">
