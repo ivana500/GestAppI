@@ -1,89 +1,64 @@
 <?php
+
 require_once 'Fonctions/db_connection.php';
 require_once 'Fonctions/fonctions.php';
 
-if (isset($_GET['idAp']) && isset($_GET['idC'])) {
-    $idAp = $_GET['idAp'];
-    $idC = $_GET['idC'];
-
+if (isset($_GET['matricule'])) {
+    $code = $_GET['matricule'];
     $conn = getConnection();
-
-    $checkApprenantSql = "SELECT * FROM Apprenant WHERE code = ?";
-    $stmt = $conn->prepare($checkApprenantSql);
-    $stmt->bind_param('s', $idAp);  
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($result->num_rows == 0) {
-        echo "L'apprenant avec l'ID $idAp n'existe pas dans la table Apprenant.";
-        exit;
-    }
-
-
-    // Requête pour récupérer l'assiduité existante
-    $sql = "SELECT * FROM suivieCours WHERE idAp = ? AND idC = ?";
+    $sql = "SELECT * FROM formateur WHERE matricule = ?";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param('ss', $idAp, $idC);
+    $stmt->bind_param('s', $code);  // Assurez-vous que c'est 's' pour string
     $stmt->execute();
     $result = $stmt->get_result();
 
     if ($result->num_rows > 0) {
-        $assiduite = $result->fetch_assoc();  // Récupérer les données d'assiduité
+        $formateurs = $result->fetch_assoc();  
     } else {
-        echo "Aucune assiduité trouvée.";
+        echo "Aucun formateur trouvé avec ce matricule.";
         exit;
     }
 
-    // Récupérer la liste des apprenants et des cours pour les afficher dans les selects
-    $sqlApprenants = "SELECT * FROM Apprenant";
-    $apprenantResult = $conn->query($sqlApprenants);
-    $apprenants = [];
-    if ($apprenantResult->num_rows > 0) {
-        while ($row = $apprenantResult->fetch_assoc()) {
-            $apprenants[] = $row;
-        }
-    }
 
-    $sqlCours = "SELECT * FROM Cours";
-    $coursResult = $conn->query($sqlCours);
-    $cours = [];
-    if ($coursResult->num_rows > 0) {
-        while ($row = $coursResult->fetch_assoc()) {
-            $cours[] = $row;
-        }
-    }
 
-    // Traitement du formulaire de modification
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['modifier'])) {
-        $apprenantId = $_POST['apprenant'];
-        $coursId = $_POST['cours'];
-        $present = $_POST['present'];
-        $date = $_POST['date'];
+        $nomAp = $_POST['nomAp'];
+        $prenomAp = $_POST['prenomAp'];
+        $email = $_POST['email'];
+        $telephone = $_POST['telephone'];
+        $specialite = $_POST['specialite'];
+        $code = $_POST['matricule'];   
 
+        $photo = $formateurs['photo'];  
 
-        $updateSql = "UPDATE suivieCours SET idAp = ?, idC = ?, date = ?, present = ? WHERE idAp = ? AND idC = ?";
+        if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
+            $targetDir = "uploads/";
+            $fileName = basename($_FILES['photo']['name']);
+            $targetFile = $targetDir . $fileName;
+            move_uploaded_file($_FILES['photo']['tmp_name'], $targetFile);
+            $photo = $fileName; 
+        }
+
+       
+        $updateSql = "UPDATE formateur SET nomForm = ?, prenomForm = ?, email = ?, telephone = ?, specialite = ?, photo = ? WHERE matricule = ?";
         $stmt = $conn->prepare($updateSql);
-        $stmt->bind_param('ssssss', $apprenantId, $coursId, $date, $present, $idAp, $idC);
+        $stmt->bind_param('ssssssi', $nomAp, $prenomAp, $email, $telephone, $specialite, $photo, $code);
 
         if ($stmt->execute()) {
-            $_SESSION['success_message'] = "Assiduité mise à jour avec succès!";
-            header("Location: assiduite.php");
+            header("Location: formateur.php");  
             exit;
         } else {
-            echo "Erreur lors de la mise à jour de l'assiduité.";
+            echo "Erreur lors de la mise à jour du formateur.";
         }
-    }
 
-    $stmt->close();
+        $stmt->close();
+    }
     $conn->close();
 } else {
-    header("Location: assiduite.php");
+    header("Location: formateur.php");
     exit;
 }
 ?>
-
-
-
 
 <!DOCTYPE html>
 <html lang="fr">
@@ -262,53 +237,47 @@ table th:hover {
 <body>
 
 <div class="container mt-5">
-    <h2>Modifier l'Apprenant</h2>
+    <h2>Modifier le Formateur</h2>
 
-    <form action="" method="POST">
+    <form action="traiteForm.php>" method="POST" enctype="multipart/form-data">
     <div class="mb-3">
-        <label for="apprenant" class="form-label">Apprenant</label>
-        <select class="form-select" id="apprenant" name="apprenant" required>
-            <option value="">Sélectionner un Apprenant</option>
-            <?php foreach ($apprenants as $apprenant): ?>
-                <option value="<?= $apprenant['code'] ?>" 
-                    <?= $assiduite['idAp'] == $apprenant['code'] ? 'selected' : '' ?>>
-                    <?= $apprenant['nomAp'] . ' ' . $apprenant['prenomAp'] ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-    </div>
+            <label for="matricule" class="form-label">Nom</label>
+            <input type="text" class="form-control" id="matricule" name="matricule"  required>
+        </div>
+        
+        <div class="mb-3">
+            <label for="nomAp" class="form-label">Nom</label>
+            <input type="text" class="form-control" id="nomAp" name="nomAp" value="<?= $formateurs['nomForm'] ?>" required>
+        </div>
 
-    <div class="mb-3">
-        <label for="cours" class="form-label">Cours</label>
-        <select class="form-select" id="cours" name="cours" required>
-            <option value="">Sélectionner un Cours</option>
-            <?php foreach ($cours as $cours_item): ?>
-                <option value="<?= $cours_item['idC'] ?>" 
-                    <?= $assiduite['idC'] == $cours_item['idC'] ? 'selected' : '' ?>>
-                    <?= $cours_item['titreC'] ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-    </div>
+        <div class="mb-3">
+            <label for="prenomAp" class="form-label">Prénom</label>
+            <input type="text" class="form-control" id="prenomAp" name="prenomAp" value="<?= $formateurs['prenomForm'] ?>" required>
+        </div>
 
-    <div class="mb-3">
-        <label for="present" class="form-label">Présent</label>
-        <select class="form-select" id="present" name="present" required>
-            <option value="1" <?= $assiduite['present'] == 1 ? 'selected' : '' ?>>Oui</option>
-            <option value="0" <?= $assiduite['present'] == 0 ? 'selected' : '' ?>>Non</option>
-        </select>
-    </div>
+        <div class="mb-3">
+            <label for="email" class="form-label">Email</label>
+            <input type="email" class="form-control" id="email" name="email" value="<?= $formateurs['email'] ?>" required>
+        </div>
 
-    <div class="mb-3">
-        <label for="date" class="form-label">Date du Cours</label>
-        <input type="date" class="form-control" id="date" name="date" value="<?= $assiduite['date'] ?>" required />
-    </div>
+        <div class="mb-3">
+            <label for="telephone" class="form-label">Téléphone</label>
+            <input type="tel" class="form-control" id="telephone" name="telephone" value="<?= $formateurs['telephone'] ?>" required>
+        </div>
 
-    <div class="d-flex justify-content-between">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-        <button type="submit" name="modifier" class="btn btn-success">Enregistrer</button>
-    </div>
-</form>
+        <div class="mb-3">
+            <label for="specialite" class="form-label">Specialite</label>
+            <input type="text" class="form-control" id="specialite" name="specialite" value="<?= $formateurs['specialite'] ?>" required>
+        </div>
+
+        <div class="mb-3">
+            <label for="photo" class="form-label">Photo</label>
+            <input type="file" class="form-control" id="photo" name="photo">
+            <small>Actuelle: <img src="uploads/<?= $formateurs['photo'] ?>" alt="Photo" style="width: 50px; height: 50px;"></small>
+        </div>
+
+        <button type="submit" name="modifier" class="btn btn-primary">Sauvegarder les modifications</button>
+    </form>
 </div>
 
 <script src="bootstrap/js/bootstrap.bundle.min.js"></script>

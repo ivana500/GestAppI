@@ -41,33 +41,65 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['titre'], $_POST['type'
         exit;
     }
 
-    $sqlFormateur = "SELECT matricule, nomForm, prenomForm FROM Formateur WHERE specialite = ?";
-    $stmt = $con->prepare($sqlFormateur);
-    $stmt->bind_param("s", $titre);  
-    $stmt->execute();
-    $result = $stmt->get_result();
+    $sqlFormateur = "SELECT matricule,nomForm FROM Formateur WHERE specialite = ?";
+$stmt = $con->prepare($sqlFormateur);
+$stmt->bind_param("s", $titre);  
+$stmt->execute();
+$result = $stmt->get_result();
 
-    if ($formateur = $result->fetch_assoc()) {
-        $formateurId = $formateur['matricule'];
+while ($formateur = $result->fetch_assoc()) {
+    $formateurId = $formateur['matricule'];
 
+    $checkCours = "SELECT idC FROM Cours WHERE idForm = ? AND titreC = ?";
+    $stmtCheck = $con->prepare($checkCours);
+    $stmtCheck->bind_param("ss", $formateurId, $titre);
+    $stmtCheck->execute();
+    $resultCheck = $stmtCheck->get_result();
+
+    if ($resultCheck->num_rows == 0) {
         $sql = "INSERT INTO Cours (idC, idForm, titreC, description, type, dateD, dateF) VALUES (?, ?, ?, ?, ?, ?, ?)";
-        $stmt = $con->prepare($sql);
-        $stmt->bind_param("sssssss",$id, $formateurId, $titre, $description, $type, $dateDebut, $dateFin);
-
-        if ($stmt->execute()) {
-            echo "Cours ajouté avec succès.";
+        $stmtInsert = $con->prepare($sql);
+        $stmtInsert->bind_param("sssssss", $id, $formateurId, $titre, $description, $type, $dateDebut, $dateFin);
+        if ($stmtInsert->execute()) {
+            echo "Cours ajouté avec succès pour le formateur " . $formateur['nomForm'] . ".";
         } else {
-            echo "Erreur lors de l'ajout du cours dans la table Cours : " . $stmt->error;
+            echo "Erreur lors de l'ajout du cours dans la table Cours : " . $stmtInsert->error;
         }
-
-        $stmt->close();
     } else {
-        echo "Formateur non trouvé pour ce type.";
+        echo "Le formateur " . $formateur['nomForm'] . " est déjà associé à ce titre de cours.";
     }
-}
 
-$sqlCours = "SELECT * FROM Cours";
-$resultCours = $con->query($sqlCours);
+    $stmtCheck->close();
+}
+$stmt->close();
+
+    } else {
+        echo "Formateur non trouvé pour ce titre.";
+    }
+
+$sqlTypes = "SELECT DISTINCT type FROM Cours";
+$resultTypes = $con->query($sqlTypes);
+
+if (isset($_GET['idC'])) {
+    $idC = $_GET['idC'];
+
+    $sqlDelete = "DELETE FROM Cours WHERE idC = ?";
+    $stmt = $con->prepare($sqlDelete);
+    $stmt->bind_param("s", $idC);
+
+    if ($stmt->execute()) {
+        $_SESSION['success_message'] = "Cours supprimé avec succès!";
+        header('Location: cours.php');
+        exit;
+    } else {
+        $_SESSION['error_message'] = "Erreur lors de la suppression du cours.";
+        header('Location: cours.php');
+        exit;
+    }
+
+    $stmt->close();
+    $con->close();
+}
 
 ?>
 
@@ -250,50 +282,92 @@ table th:hover {
               
 <button class="btn btn-success rounded-5 shadow" data-bs-toggle="modal" data-bs-target="#addCoursModal">
                         <i class="fas fa-plus m-lg-1"></i>Ajouter un Cours
-                    </button> 
-                   
+                    </button>
           </div>
-          
           <div class="container my-5">
-          <a href= "enseig.php" class="btn btn-primary">
-               Formateur par specialite
-        </a>  
       <h1 class="text-center text-bold text-dark">Liste des cours </h1>
       
          
           <div class="card-body  ">
               <div class="table-responsive ">
-
-            </div>
-            <table class="table table-striped table-hover table-bordered rounded-3 align-middle mt-4 ">
-                      <thead class="y">
+              <table class="table table-striped table-hover table-bordered rounded-3 align-middle mt-4">
+    <thead class="y">
         <tr class="text-center fw-bold">
-          
             <th scope="col">Type</th>
             <th scope="col">Titre</th>
-            <th scope="col">Description</th>
+            <th scope="col">Formateur</th>
+            <th scope="col">Date de début</th>
+            <th scope="col">Date de fin</th>
+            <th scope="col">Actions</th>
         </tr>
     </thead>
     <tbody>
-        <?php if ($resultCours->num_rows > 0): ?>
-            <?php while ($transaction = $resultCours->fetch_assoc()): ?>
-                <tr>
-                    <td class="text-center"><?= htmlspecialchars($transaction['type']) ?></td>
-                    <td class="text-center"><?= htmlspecialchars($transaction['titreC']) ?></td>
-                    <td class="text-center"><?= htmlspecialchars($transaction['description']) ?></td>
-                </tr>
-            <?php endwhile; ?>
-        <?php else: ?>
-            <tr>
-                <td colspan="3" class="text-center">Aucun cours trouvé.</td>
-            </tr>
-        <?php endif; ?>
+    <?php 
+    $foundData = false; 
+    while ($typeRow = $resultTypes->fetch_assoc()) {
+        $currentType = $typeRow['type'];
+
+        $sqlCours = "
+            SELECT C.idC, C.titreC, C.dateD, C.dateF, F.nomForm, F.prenomForm, F.specialite
+            FROM Cours C
+            JOIN Formateur F ON C.idForm = F.matricule
+            WHERE C.type = ?
+        ";
+        $stmtCours = $con->prepare($sqlCours);
+        $stmtCours->bind_param("s", $currentType);
+        $stmtCours->execute();
+        $resultCours = $stmtCours->get_result();
+
+        $courses = [];
+
+        while ($row = $resultCours->fetch_assoc()) {
+            $courses[$row['titreC']]['idC'] = $row['idC'];
+            $courses[$row['titreC']]['formateurs'][$row['specialite']][] = $row['nomForm'] . ' ' . $row['prenomForm'];
+            $courses[$row['titreC']]['dates'][] = ['dateD' => $row['dateD'], 'dateF' => $row['dateF']];
+        }
+
+        if (!empty($courses)) {
+            $foundData = true;  
+            foreach ($courses as $titre => $data) {
+                echo "<tr class='text-center'><td rowspan='" . count($data['formateurs']) . "'>$currentType</td>";
+                echo "<td rowspan='" . count($data['formateurs']) . "'>$titre</td>";
+
+                $firstFormateur = true;
+                foreach ($data['formateurs'] as $specialite => $formateurs) {
+                    foreach ($formateurs as $formateur) {
+                        if ($firstFormateur) {
+                            echo "<td rowspan='" . count($formateurs) . "'>$formateur</td>";
+                            $firstFormateur = false;
+                        } else {
+                            echo "<td>$formateur</td>";
+                        }
+                        echo "<td>" . implode('<br>', array_column($data['dates'], 'dateD')) . "</td>";
+                        echo "<td>" . implode('<br>', array_column($data['dates'], 'dateF')) . "</td>";
+                        echo '<td class="text-center">
+                                    <a class="btn btn-warning btn-edit me-2" href="traiteCours.php?idC=' . $data["idC"] . '">
+                                    <i class="fas fa-pencil-alt"></i>
+                                    </a>
+                                    <a class="btn btn-danger btn-delete" href="enseig.php?idC=' . $data["idC"] . '" onClick="return confirm(\'Voulez-vous supprimer ce cours ?\')">
+                                    <i class="fas fa-trash-alt"></i>
+                                    </a>
+                                </td>
+                        </tr>';
+                    }
+                }
+            }
+        }
+        $stmtCours->close();
+    }
+
+    if (!$foundData) {
+        echo "<tr><td colspan='6' class='text-center'>Aucun formateur trouvé pour ce type.</td></tr>";
+    }
+    ?>
     </tbody>
-    <?php
-$con->close();
-?>
-</table>   
-  
+</table>
+
+            </div>
+                  
                 </div>
             </div>
 
@@ -337,7 +411,6 @@ $con->close();
                         </div>
                     </form>
                 </div>
-                
             </div>
         </div>
     </div>

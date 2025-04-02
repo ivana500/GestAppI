@@ -90,7 +90,7 @@
         <div class="card-body">
             <div class="text-center mb-4">
                 <div class="rounded-circle mx-auto" style="overflow: hidden; width: 80px; height: 80px;">
-                    <img src="images/logo.png" alt="Logo" class="img-fluid">
+                    <img src="images/logo.jpg" alt="Logo" class="img-fluid">
                 </div>
                 <h5 class="card-title mt-2 display-6">Connexion</h5>
             </div>
@@ -117,8 +117,8 @@
 
             <!-- Liens supplémentaires -->
             <div class="text-center mt-4">
-                <a href="/mot-de-passe-oublie.php" class="text-muted">Mot de passe oublié ?</a> |
-                <a href="/inscription.php" class="text-muted">S'inscrire</a>
+                <a href="mot-de-passe-oublie.php" class="text-muted">Mot de passe oublié ?</a> |
+                <a href="inscriptionA.php" class="text-muted">S'inscrire</a>
             </div>
         </div>
     </div>

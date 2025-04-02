@@ -11,7 +11,7 @@ if (isset($_POST['username']) && isset($_POST['password'])) {
  
     $conn = getConnection();
 
-    $sqlAdmin = "SELECT * FROM administrateur WHERE login = '$username' AND password = '$password'";
+    $sqlAdmin = "SELECT * FROM administrateur WHERE login = '$username' AND id = '$password'";
     $resultAdmin = $conn->query($sqlAdmin);
 
     // Vérifier si existance de l'administrateur

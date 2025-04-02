@@ -22,73 +22,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 }
 
-// Vérifier si l'ID (code) est passé en paramètre dans l'URL
 if (isset($_GET['code'])) {
     $code = $_GET['code'];
 
-    // Créer une connexion à la base de données
     $conn = getConnection();
 
-    // Requête pour récupérer les informations de l'apprenant
     $sql = "SELECT * FROM Apprenant WHERE code = ?";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param('i', $code);
     $stmt->execute();
     $result = $stmt->get_result();
 
-    // Vérifier si un apprenant est trouvé
     if ($result->num_rows > 0) {
         $apprenant = $result->fetch_assoc();  // Récupérer les données
     } else {
-        // Si l'apprenant n'est pas trouvé, afficher un message d'erreur
         echo "Aucun apprenant trouvé avec ce code.";
         exit;
     }
 
-    // Si le formulaire est soumis
+    
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['modifier'])) {
-        // Récupérer les valeurs du formulaire
+       
         $nomAp = $_POST['nomAp'];
         $prenomAp = $_POST['prenomAp'];
         $email = $_POST['email'];
         $telephone = $_POST['telephone'];
-        $code = $_POST['code'];  // Assurez-vous que le code est toujours présent (même s'il ne change pas)
-
-        // Gérer l'upload de la photo si l'utilisateur en a choisi une nouvelle
-        $photo = $apprenant['photo'];  // Par défaut, garder la photo existante
+        $code = $_POST['code'];  
+        
+        $photo = $apprenant['photo'];  
 
         if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
-            // Nouveau fichier photo téléchargé
+          
             $targetDir = "uploads/";
             $fileName = basename($_FILES['photo']['name']);
             $targetFile = $targetDir . $fileName;
             move_uploaded_file($_FILES['photo']['tmp_name'], $targetFile);
-            $photo = $fileName;  // Mettre à jour le nom de la photo
+            $photo = $fileName;  
         }
 
-        // Préparer la requête de mise à jour
         $updateSql = "UPDATE Apprenant SET nomAp = ?, prenomAp = ?, email = ?, telephone = ?, photo = ? WHERE code = ?";
         $stmt = $conn->prepare($updateSql);
         $stmt->bind_param('sssssi', $nomAp, $prenomAp, $email, $telephone, $photo, $code);
 
-        // Exécuter la requête
         if ($stmt->execute()) {
-            // Si la mise à jour est réussie, rediriger vers la page des apprenants
             header("Location: apprenant.php");
             exit;
         } else {
-            // Si une erreur survient lors de la mise à jour
             echo "Erreur lors de la mise à jour de l'apprenant.";
         }
 
-        // Fermer la déclaration
         $stmt->close();
     }
 
-    // Fermer la connexion à la base de données
     $conn->close();
 } else {
-    // Si le code n'est pas spécifié, rediriger vers la page apprenant.php
     header("Location: apprenant.php");
     exit;
 }
@@ -99,8 +86,174 @@ if (isset($_GET['code'])) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Modification Apprenant</title>
+    <title>Dashboard Admin</title>
     <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="fontawesome/css/all.css" rel="stylesheet">
+    <style>
+        .light-theme {
+            background-color: white;
+            color: #333;
+        }
+
+        .dark-theme {
+            background-color: #333;
+            color: #f8f9fa;
+        }
+
+       
+.sidebar {
+    background-color: black; 
+    width: 300px;
+}
+.sidebar .nav-link {
+    position: relative;
+    padding: 10px;
+    transition: all 0.3s ease-in-out; 
+    text-decoration: none;
+}
+
+.sidebar .nav-link:hover {
+    border: 2px solid black; 
+    color: black; 
+}
+.table th, .table td {
+    font-size: 1.1rem; 
+}
+
+
+.sidebar .nav-link i {
+    transition: transform 0.3s ease-in-out; 
+}
+
+.sidebar .nav-link:hover i {
+    transform: rotate(360deg);
+}
+
+
+.sidebar .nav-link:active {
+    color: red; 
+    border: 2px solid black; 
+}
+
+
+.search-bar {
+    margin-left: auto;
+    padding: 5px 10px;
+}
+
+
+table, th, td {
+    border: 1px solid #ddd; 
+}
+
+table th:hover {
+    background-color: #8de1e3; 
+}
+
+
+        .content {
+            margin-left: 300px;
+        }
+
+        header {
+            background-color: rgb(111, 235, 239);
+        }
+
+        .search-bar {
+            margin-left: auto;
+        }
+    </style>
+     <!-- Navbar -->
+     <header class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
+        <div class="container-fluid d-flex justify-content-between align-items-center">
+        <form method="POST" class="d-none d-md-inline-block form-inline ms-auto me-0 me-md-3 my-2 my-md-0">
+  <div class="input-group">
+      <input class="form-control" type="text" name="search" placeholder="Rechercher par nom, prénom, email, etc." value="<?= isset($_POST['search']) ? htmlspecialchars($_POST['search']) : '' ?>" />
+      <button class="btn btn-primary" type="submit">
+          <i class="fas fa-search"></i>
+      </button>
+  </div>
+</form>
+
+
+
+            <div class="d-flex align-items-center text-light text-bold">
+                <span><?php echo $nom . ' ' . $prenom; ?></span>
+                
+            </div>
+        </div>
+    </header>
+
+    <div class="d-flex">
+        
+        <div class="sidebar flex-shrink-0 p-3 ">
+            
+
+            
+    <h4 class="text-center mb-4 y" >
+        <a href="acceuil.php" style="text-decoration: none; color: white;">ADMINISTRATEUR</a>
+    </h4>
+
+    <div class="d-flex justify-content-center mb-3">
+    <a class="nav-link" href="dasboard.php">
+    <img src="images/stephan.png" alt="User" class="rounded-circle" style="width: 80px; height: 80px;">
+</a>          </div>
+
+    <div class="nav flex-column">
+        <li class="nav-item mb-3">
+        <a class="nav-link text-light " href="apprenant.php">
+        <i class="fas fa-list me-2 ">   </i>Listes Apprenants
+            </a>
+        </li>
+        
+        <li class="nav-item mb-3">
+            <a class="nav-link text-light" href="formateur.php">
+                <i class="fas fa-list me-2"></i>Listes Formateurs
+            </a>
+        </li>
+        <li class="nav-item mb-3">
+            <a class="nav-link text-light" href="assiduite.php">
+                <i class="fas fa-list me-2"></i>Listes Assiduité
+            </a>
+        </li>
+        <li class="nav-item mb-3">
+            <a class="nav-link text-light" href="cours.php">
+                <i class="fas fa-list me-2"></i>Listes Cours
+            </a>
+        </li>
+        <li class="nav-item mb-3">
+            <a class="nav-link text-light" href="emploiTemps.php">
+                <i class="fas fa-calendar me-2"></i>Emploi du Temps
+            </a>
+        </li>
+        <li class="nav-item mb-3">
+            <a class="nav-link text-light" href="comptabilite.php">
+                <i class="fas fa-list me-2"></i>Listes Paiements
+            </a>
+        </li>
+        <li class="nav-item mb-3">
+            <a class="nav-link text-light" href="rapport.php">
+                <i class="fas fa-file-alt me-2"></i>Affichage des Rapports
+            </a>
+        </li>
+        <li class="nav-item mb-3">
+            <a class="nav-link text-light" href="util.php">
+                <i class="fas fa-users me-2"></i>Gestion des Utilisateurs
+            </a>
+        </li>
+        <li class="nav-item mb-3">
+            <a class="nav-link text-light" href="sauvegarde.php">
+                <i class="fas fa-database me-2"></i>Sauvegarde des Données
+            </a>
+        </li>
+        <li class="nav-item mb-3">
+            <a class="nav-link text-light" href="appli.php">
+                <i class="fas fa-tools me-2"></i>Paramètres de l'Application
+            </a>
+        </li>
+    </div>
+</div>
+        
 </head>
 <body>
 

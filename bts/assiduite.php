@@ -8,14 +8,49 @@ if (!isset($_SESSION['nom']) || !isset($_SESSION['prenom'])) {
 
 $nom = $_SESSION['nom'];
 $prenom = $_SESSION['prenom'];
+if (!isset($_SESSION['theme'])) {
+    $_SESSION['theme'] = 'light';  
+}
+
+$themeClass = $_SESSION['theme'] === 'dark' ? 'dark-theme' : 'light-theme';
 ?>
-
 <?php
-
 require_once 'Fonctions/db_connection.php';
 
 $conn = getConnection();
 
+$searchQuery = "";
+if (isset($_POST['search'])) {
+    $searchQuery = $_POST['search'];
+}
+
+$sql = "SELECT A.idAp, A.idC, A.date, A.present, P.nomAp AS nomAp, P.prenomAp AS prenomAp, C.titreC
+        FROM suivieCours A
+        JOIN Apprenant P ON A.idAp = P.code
+        JOIN Cours C ON A.idC = C.idC";
+
+if ($searchQuery != "") {
+    $sql .= " WHERE (P.nomAp LIKE ? OR P.prenomAp LIKE ? OR C.titreC LIKE ? OR A.date LIKE ?)";
+}
+
+$stmt = $conn->prepare($sql);
+
+if ($searchQuery != "") {
+    $searchTerm = "%" . $searchQuery . "%";
+    $stmt->bind_param("ssss", $searchTerm, $searchTerm, $searchTerm, $searchTerm);
+}
+
+$stmt->execute();
+$result = $stmt->get_result();
+
+$assiduites = [];
+if ($result->num_rows > 0) {
+    while ($row = $result->fetch_assoc()) {
+        $assiduites[] = $row;
+    }
+}
+
+$stmt->close();
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['apprenant'], $_POST['cours'], $_POST['present'], $_POST['date'])) {
     $apprenantId = $_POST['apprenant'];
@@ -25,16 +60,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['apprenant'], $_POST['c
 
     $sqlCheck = "SELECT * FROM suivieCours WHERE idAp = ? AND idC = ? AND date = ?";
     $stmt = $conn->prepare($sqlCheck);
-    $stmt->bind_param("sandra", $apprenantId, $coursId, $date);
+    $stmt->bind_param("sss", $apprenantId, $coursId, $date);
     $stmt->execute();
     $result = $stmt->get_result();
 
     if ($result->num_rows == 0) {
-       
         $sqlInsert = "INSERT INTO suivieCours (idAp, idC, date, present) VALUES (?, ?, ?, ?)";
         $stmt = $conn->prepare($sqlInsert);
-        $stmt->bind_param("sand", $apprenantId, $coursId, $date, $present);
-        
+        $stmt->bind_param("ssss", $apprenantId, $coursId, $date, $present);
+
         if ($stmt->execute()) {
             $_SESSION['success_message'] = "Assiduité ajoutée avec succès!";
         } else {
@@ -48,9 +82,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['apprenant'], $_POST['c
     exit;
 }
 
-
-$conn = getConnection();
-
 $sqlApprenants = "SELECT * FROM Apprenant";
 $apprenantResult = $conn->query($sqlApprenants);
 $apprenants = [];
@@ -60,15 +91,14 @@ if ($apprenantResult->num_rows > 0) {
     }
 }
 
-$sqlApprenants = "SELECT * FROM Apprenant";
-$apprenantResult = $conn->query($sqlApprenants);
-$apprenants = [];
-if ($apprenantResult->num_rows > 0) {
-    while ($row = $apprenantResult->fetch_assoc()) {
-        $apprenants[] = $row;
+$sqlCours = "SELECT * FROM Cours";
+$coursResult = $conn->query($sqlCours);
+$cours = [];
+if ($coursResult->num_rows > 0) {
+    while ($row = $coursResult->fetch_assoc()) {
+        $cours[] = $row;
     }
 }
-
 
 $sql = "SELECT A.idAp, A.idC, A.date, A.present, P.nomAp AS nomAp, P.prenomAp AS prenomAp, C.titreC
         FROM suivieCours A
@@ -83,58 +113,105 @@ if ($result->num_rows > 0) {
     }
 }
 
+if (isset($_GET['idAp']) && isset($_GET['idC'])) {
+    $idAp = $_GET['idAp'];
+    $idC = $_GET['idC'];
 
-if (isset($_GET['delete'])) {
-    $idAp = $_GET['apprenant'];
-    $idC = $_GET['cours'];
-    $date = $_GET['date'];
-
-    $sqlDelete = "DELETE FROM Assiduite WHERE idAp = ? AND idC = ? AND date = ?";
+    $sqlDelete = "DELETE FROM suivieCours WHERE idAp = ? AND idC = ?";
+    
     $stmt = $conn->prepare($sqlDelete);
-    $stmt->bind_param("sis", $idAp, $idC, $date);
-    $stmt->execute();
+    $stmt->bind_param("ss", $idAp, $idC);  
+    if ($stmt->execute()) {
+        $_SESSION['success_message'] = "Assiduité supprimée avec succès!";
+    } else {
+        $_SESSION['error_message'] = "Erreur lors de la suppression de l'assiduité.";
+    }
 
-    $_SESSION['success_message'] = "Assiduité supprimée avec succès.";
-    header('Location: assiduite.php');
+    $stmt->close();
+    $conn->close();
+
+    if (!isset($_SESSION['redirected'])) {
+        $_SESSION['redirected'] = true;
+        header('Location: assiduite.php');
+        exit;
+    } else {
+        unset($_SESSION['redirected']);
+    }
     exit;
 }
 ?>
 
+
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Suivi d'Assiduité</title>
-
+    <title>Dashboard Admin</title>
     <link href="bootstrap/css/bootstrap.min.css" rel="stylesheet">
     <link href="fontawesome/css/all.css" rel="stylesheet">
     <style>
-       .sidebar {
-    background-color: rgb(111, 235, 239); 
+        .light-theme {
+            background-color: white;
+            color: #333;
+        }
+
+        .dark-theme {
+            background-color: #333;
+            color: #f8f9fa;
+        }
+
+       
+.sidebar {
+    background-color: black; 
+    width: 300px;
+}
+.sidebar .nav-link {
+    position: relative;
+    padding: 10px;
+    transition: all 0.3s ease-in-out; 
+    text-decoration: none;
+}
+
+.sidebar .nav-link:hover {
+    border: 2px solid black; 
+    color: black; 
+}
+.table th, .table td {
+    font-size: 1.1rem; 
 }
 
 
-.accordion-button {
-    background-color: rgb(111, 235, 239); 
-    color: #004085; 
+.sidebar .nav-link i {
+    transition: transform 0.3s ease-in-out; 
+}
+
+.sidebar .nav-link:hover i {
+    transform: rotate(360deg);
 }
 
 
-.accordion-button:not(.collapsed) {
+.sidebar .nav-link:active {
+    color: red; 
+    border: 2px solid black; 
+}
+
+
+.search-bar {
+    margin-left: auto;
+    padding: 5px 10px;
+}
+
+
+table, th, td {
+    border: 1px solid #ddd; 
+}
+
+table th:hover {
     background-color: #8de1e3; 
-    color: #004085; 
 }
 
-.accordion-button::after {
-    filter: brightness(0) invert(1); 
-}
-
-
-.accordion-button:focus {
-    border-color: #80bfff; 
-}
 
         .content {
             margin-left: 300px;
@@ -149,213 +226,114 @@ if (isset($_GET['delete'])) {
         }
     </style>
      <!-- Navbar -->
-     <header class="text-white p-3">
+     <header class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
         <div class="container-fluid d-flex justify-content-between align-items-center">
-            <div class="d-flex align-items-center search-bar">
-                <input type="text" class="form-control me-2" placeholder="Recherche..." aria-label="Recherche">
-            </div>
-            <div class="d-flex align-items-center">
+        <form method="POST" class="d-none d-md-inline-block form-inline ms-auto me-0 me-md-3 my-2 my-md-0">
+  <div class="input-group">
+      <input class="form-control" type="text" name="search" placeholder="Rechercher par nom, prénom, email, etc." value="<?= isset($_POST['search']) ? htmlspecialchars($_POST['search']) : '' ?>" />
+      <button class="btn btn-primary" type="submit">
+          <i class="fas fa-search"></i>
+      </button>
+  </div>
+</form>
+
+
+
+            <div class="d-flex align-items-center text-light text-bold">
                 <span><?php echo $nom . ' ' . $prenom; ?></span>
+                
             </div>
         </div>
     </header>
 
     <div class="d-flex">
-        <!-- Sidebar -->
-        <div class="sidebar flex-shrink-0 p-3 bg-light">
-            <h4 class="text-center mb-4" style="color:rgb(67, 211, 247);">
-                <a href="acceuil.php" style="text-decoration: none; color: inherit;">ADMINISTRATEUR</a>
-            </h4>
+        
+        <div class="sidebar flex-shrink-0 p-3 ">
+            
 
-            <div class="d-flex justify-content-center mb-3">
-                <img src="images/laperle.png" alt="User" class="rounded-circle" style="width: 60px; height: 60px;">
-            </div>
+            
+    <h4 class="text-center mb-4 y" >
+        <a href="acceuil.php" style="text-decoration: none; color: white;">ADMINISTRATEUR</a>
+    </h4>
 
-            <div class="accordion" id="accordionExample">
-                <!-- Gestion des Apprenants -->
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="headingOne">
-                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#apprenants" aria-expanded="false" aria-controls="apprenants">
-                            <i class="fas fa-user-graduate me-2"></i>Gestion des Apprenants
-                        </button>
-                    </h2>
-                    <div id="apprenants" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#accordionExample">
-                        <div class="accordion-body">
-                            <ul class="nav flex-column">
-                               
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" href="apprenant.php">
-                                        <i class="fas fa-list me-2"></i>Listes Apprenants
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
+    <div class="d-flex justify-content-center mb-3">
+    <a class="nav-link" href="dasboard.php">
+    <img src="images/stephan.png" alt="User" class="rounded-circle" style="width: 80px; height: 80px;">
+</a>          </div>
 
-                <!-- Gestion des Formateurs -->
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="headingTwo">
-                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#enseignants" aria-expanded="false" aria-controls="enseignants">
-                            <i class="fas fa-chalkboard-teacher me-2"></i>Gestion des Formateurs
-                        </button>
-                    </h2>
-                    <div id="enseignants" class="accordion-collapse collapse" aria-labelledby="headingTwo" data-bs-parent="#accordionExample">
-                        <div class="accordion-body">
-                            <ul class="nav flex-column">
-                                <li class="nav-item">
-                                    <a class="nav-link text-primary active" href="inscription.php" id="ajoutFormateur"><i class="fas fa-plus me-2"></i>Ajout Formateur</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" href="formateur.php">
-                                        <i class="fas fa-list me-2"></i>Listes Formateurs
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Gestion de l'Assiduité -->
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="headingThree">
-                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#assiduite" aria-expanded="false" aria-controls="assiduite">
-                            <i class="fas fa-user-check me-2"></i>Gestion de l'Assiduité
-                        </button>
-                    </h2>
-                    <div id="assiduite" class="accordion-collapse collapse" aria-labelledby="headingThree" data-bs-parent="#accordionExample">
-                        <div class="accordion-body">
-                            <ul class="nav flex-column">
-                                
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" href="assiduite.php">
-                                        <i class="fas fa-list me-2"></i>Listes Assiduité
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Gestion des Cours -->
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="headingFour">
-                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#cours" aria-expanded="false" aria-controls="cours">
-                            <i class="fas fa-book me-2"></i>Gestion des Cours
-                        </button>
-                    </h2>
-                    <div id="cours" class="accordion-collapse collapse" aria-labelledby="headingFour" data-bs-parent="#accordionExample">
-                        <div class="accordion-body">
-                            <ul class="nav flex-column">
-                                
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" href="cours.php">
-                                        <i class="fas fa-list me-2"></i>Listes Cours
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" href="emploiTemps.php">
-                                        <i class="fas fa-calendar me-2"></i>Emploi du Temps
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Gestion de la Comptabilité -->
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="headingFive">
-                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#comptabilite" aria-expanded="false" aria-controls="comptabilite">
-                            <i class="fas fa-money-bill-wave me-2"></i>Gestion de la Comptabilité
-                        </button>
-                    </h2>
-                    <div id="comptabilite" class="accordion-collapse collapse" aria-labelledby="headingFive" data-bs-parent="#accordionExample">
-                        <div class="accordion-body">
-                            <ul class="nav flex-column">
-                               
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" href="comptabilite.php">
-                                        <i class="fas fa-list me-2"></i>Listes Paiements
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Rapport -->
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="headingSix">
-                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#rapport" aria-expanded="false" aria-controls="rapport">
-                            <i class="fas fa-file-alt me-2"></i>Rapport
-                        </button>
-                    </h2>
-                    <div id="rapport" class="accordion-collapse collapse" aria-labelledby="headingSix" data-bs-parent="#accordionExample">
-                        <div class="accordion-body">
-                            <ul class="nav flex-column">
-                                <li class="nav-item">
-                                    <a class="nav-link text-primary active" href="rapport.php" id="optionsRapports"><i class="fas fa-cogs me-2"></i>Options de Rapports</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" href="rapport.php">
-                                        <i class="fas fa-file-alt me-2"></i>Affichage des Rapports
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Paramètres -->
-                <div class="accordion-item">
-                    <h2 class="accordion-header" id="headingSeven">
-                        <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#parametres" aria-expanded="false" aria-controls="parametres">
-                            <i class="fas fa-cogs me-2"></i>Paramètres
-                        </button>
-                    </h2>
-                    <div id="parametres" class="accordion-collapse collapse" aria-labelledby="headingSeven" data-bs-parent="#accordionExample">
-                        <div class="accordion-body">
-                            <ul class="nav flex-column">
-                                <li class="nav-item">
-                                    <a class="nav-link text-primary active" href="option.php" id="optionsConfiguration"><i class="fas fa-cogs me-2"></i>Options de Configuration</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" href="util.php">
-                                        <i class="fas fa-users me-2"></i>Gestion des Utilisateurs
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" href="sauvegarde.php">
-                                        <i class="fas fa-database me-2"></i>Sauvegarde des Données
-                                    </a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" href="appli.php">
-                                        <i class="fas fa-tools me-2"></i>Paramètres de l'Application
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div class="nav flex-column">
+        <li class="nav-item mb-3">
+        <a class="nav-link text-light " href="apprenant.php">
+        <i class="fas fa-list me-2 ">   </i>Listes Apprenants
+            </a>
+        </li>
+        
+        <li class="nav-item mb-3">
+            <a class="nav-link text-light" href="formateur.php">
+                <i class="fas fa-list me-2"></i>Listes Formateurs
+            </a>
+        </li>
+        <li class="nav-item mb-3">
+            <a class="nav-link text-light" href="assiduite.php">
+                <i class="fas fa-list me-2"></i>Listes Assiduité
+            </a>
+        </li>
+        <li class="nav-item mb-3">
+            <a class="nav-link text-light" href="cours.php">
+                <i class="fas fa-list me-2"></i>Listes Cours
+            </a>
+        </li>
+        <li class="nav-item mb-3">
+            <a class="nav-link text-light" href="emploiTemps.php">
+                <i class="fas fa-calendar me-2"></i>Emploi du Temps
+            </a>
+        </li>
+        <li class="nav-item mb-3">
+            <a class="nav-link text-light" href="comptabilite.php">
+                <i class="fas fa-list me-2"></i>Listes Paiements
+            </a>
+        </li>
+        <li class="nav-item mb-3">
+            <a class="nav-link text-light" href="rapport.php">
+                <i class="fas fa-file-alt me-2"></i>Affichage des Rapports
+            </a>
+        </li>
+        <li class="nav-item mb-3">
+            <a class="nav-link text-light" href="util.php">
+                <i class="fas fa-users me-2"></i>Gestion des Utilisateurs
+            </a>
+        </li>
+        <li class="nav-item mb-3">
+            <a class="nav-link text-light" href="sauvegarde.php">
+                <i class="fas fa-database me-2"></i>Sauvegarde des Données
+            </a>
+        </li>
+        <li class="nav-item mb-3">
+            <a class="nav-link text-light" href="appli.php">
+                <i class="fas fa-tools me-2"></i>Paramètres de l'Application
+            </a>
+        </li>
+    </div>
+</div>
+        
 </head>
-<body>
-    <div class="container my-5">
-        <h1 class="text-center text-bold">Suivi de l'Assiduité</h1>
-        <div class="card border-primary mb-3 rounded-3">
-            <div class="card-header d-flex justify-content-between align-items-center bg-secondary-subtle text-success rounded-3">
-                <h3 class="mb-0"><i class="fas fa-check-circle me-2"></i>Assiduités</h3>
+<body class="<?php echo $themeClass; ?>">    
+    
+        
+            <div class="card-header d-flex justify-content-between align-items-center bg-secondary-subtle text-primary rounded-3">
+              
                 <button class="btn btn-success rounded-5 shadow" data-bs-toggle="modal" data-bs-target="#addAssiduiteModal">
                     <i class="fas fa-plus m-lg-1"></i>Ajouter une Assiduité
                 </button>
             </div>
-            <div class="card-body shadow">
-                <div class="table-responsive">
-                    <table class="table table-striped table-hover table-bordered rounded-3 align-middle mt-4">
-                        <thead class="table-primary">
+            <div class="container my-5">
+        <h1 class="text-center text-bold text-dark">Suivi de l'Assiduité </h1>
+        
+           
+            <div class="card-body  ">
+                <div class="table-responsive ">
+                    <table class="table table-striped table-hover table-bordered rounded-3 align-middle mt-4 ">
+                        <thead class="y">
                             <tr class="text-center fw-bold">
                                 <th scope="col">ID</th>
                                 <th scope="col">Apprenant</th>
@@ -366,66 +344,82 @@ if (isset($_GET['delete'])) {
                             </tr>
                         </thead>
                         <tbody>
-                        <?php foreach ($assiduites as $index => $assiduite): ?>
-                            <tr class="text-center">
-                                <td><?= $index + 1 ?></td>
-                                <td><?= $assiduite['apprenant_nom'] . ' ' . $assiduite['apprenant_prenom'] ?></td>
-                                <td><?= $assiduite['nomCours'] ?></td>
-                                <td><?= $assiduite['present'] ? 'Oui' : 'Non' ?></td>
-                                <td><?= $assiduite['date'] ?></td>
-                                <td>
-                                    <a href="assiduite.php?delete=true&apprenant=<?= $assiduite['idAp'] ?>&cours=<?= $assiduite['idC'] ?>&date=<?= $assiduite['date'] ?>" class="btn btn-danger btn-sm ms-2">Supprimer</a>
-                                </td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
+        <?php if (count($assiduites) > 0): ?>
+            <?php foreach ($assiduites as $index => $assiduite): ?>
+                <tr class="text-center">
+                    <td><?= $index + 1 ?></td>
+                    <td><?= $assiduite['nomAp'] . ' ' . $assiduite['prenomAp'] ?></td>
+                    <td><?= $assiduite['titreC'] ?></td>
+                    <td><?= $assiduite['present'] ? 'Oui' : 'Non' ?></td>
+                    <td><?= $assiduite['date'] ?></td>
+                    <td class="text-center">
+                                <a class="btn btn-warning btn-edit me-2" href="TraitAssi.php?idAp=<?= $assiduite['idAp'] ?>&idC=<?= $assiduite['idC'] ?>">
+                                <i class="fas fa-pencil-alt"></i>
+                                </a>
+                                <a class="btn btn-danger btn-delete" href="assiduite.php?idAp=<?= $assiduite['idAp'] ?>&idC=<?= $assiduite['idC'] ?>" onClick="return confirm('Voulez-vous supprimer ce suivi ?')">
+                                <i class="fas fa-trash-alt"></i>
+                                </a>
+
+                            </td>
+                </tr>
+            <?php endforeach; ?>
+        <?php else: ?>
+            <tr>
+                <td colspan="5" class="text-center">Aucun résultat trouvé</td>
+            </tr>
+        <?php endif; ?>
+    </tbody>
                     </table>
                 </div>
             </div>
-        </div>
+        
         <div class="modal fade" id="addAssiduiteModal" tabindex="-1" aria-labelledby="addAssiduiteModalLabel" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content rounded-3 shadow">
-                    <div class="modal-header bg-dark-subtle">
-                        <h5 class="modal-title text-success" id="addAssiduiteModalLabel"><i class="fas fa-check-circle me-2"></i>Ajouter une Assiduité</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-3 shadow">
+            <div class="modal-header bg-dark-subtle">
+                <h5 class="modal-title text-success" id="addAssiduiteModalLabel"><i class="fas fa-check-circle me-2"></i>Ajouter une Assiduité</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form action="" method="POST">
+                    <div class="mb-3">
+                        <label for="apprenant" class="form-label">Apprenant</label>
+                        <select class="form-select" id="apprenant" name="apprenant" required>
+                            <option value="">Sélectionner un Apprenant</option>
+                            <?php foreach ($apprenants as $apprenant): ?>
+                                <option value="<?= $apprenant['code'] ?>"><?= $apprenant['nomAp'] . ' ' . $apprenant['prenomAp'] ?></option>
+                            <?php endforeach; ?>
+                        </select>
                     </div>
-                    <div class="modal-body">
-                        <form action="" method="POST">
-                            <div class="mb-3">
-                                <label for="apprenant" class="form-label">Apprenant</label>
-                                <select class="form-select" id="apprenant" name="apprenant" required>
-                                    <option value="">Sélectionner un Apprenant</option>
-                                    <?php foreach ($apprenants as $apprenant): ?>
-                                        <option value="<?= $apprenant['code'] ?>"><?= $apprenant['nomAp'] . ' ' . $apprenant['prenomAp'] ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="cours" class="form-label">Cours</label>
-                                <select class="form-select" id="cours" name="cours" required>
-                                    <option value="">Sélectionner un Cours</option>
-                                    <?php foreach ($cours as $cours_item): ?>
-                                        <option value="<?= $cours_item['idC'] ?>"><?= $cours_item['titreC'] ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="present" class="form-label">Présent</label>
-                                <select class="form-select" id="present" name="present" required>
-                                    <option value="1">Oui</option>
-                                    <option value="0">Non</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="date" class="form-label">Date du Cours</label>
-                                <input type="date" class="form-control" id="date" name="date" required />
-                            </div>
-                            <div class="d-flex justify-content-between">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                                <button type="submit" class="btn btn-success">Enregistrer</button>
-                            </div>
-                        </form>
+                    <div class="mb-3">
+                        <label for="cours" class="form-label">Cours</label>
+                        <select class="form-select" id="cours" name="cours" required>
+                            <option value="">Sélectionner un Cours</option>
+                            <?php foreach ($cours as $cours_item): ?>
+                                <option value="<?= $cours_item['idC'] ?>"><?= $cours_item['titreC'] ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="present" class="form-label">Présent</label>
+                        <select class="form-select" id="present" name="present" required>
+                            <option value="1">Oui</option>
+                            <option value="0">Non</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="date" class="form-label">Date du Cours</label>
+                        <input type="date" class="form-control" id="date" name="date" required />
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-success">Enregistrer</button>
+                    </div>
+                </form>
+            </div>
+       
+    
+
                     </div>
                 </div>
             </div>
@@ -433,5 +427,7 @@ if (isset($_GET['delete'])) {
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    
 </body>
 </html>

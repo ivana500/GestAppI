@@ -1,23 +1,18 @@
 <?php
-session_start();
-
-if (!isset($_SESSION['nom']) || !isset($_SESSION['prenom']) || !isset($_SESSION['email']) || !isset($_SESSION['telephone']) || !isset($_SESSION['dateIns'])) {
+session_start();  
+if (!isset($_SESSION['nom']) || !isset($_SESSION['prenom'])) {
+   
     header("Location: index.php");
     exit();
 }
 
 $nom = $_SESSION['nom'];
 $prenom = $_SESSION['prenom'];
-$email = $_SESSION['email'];
-$telephone = $_SESSION['telephone'];
-$date = $_SESSION['dateIns'];
-
-$photo = isset($_SESSION['photo']) && !empty($_SESSION['photo']) ? $_SERVER['localhost'] . '/BTS/bts/uploads/' . $_SESSION['photo'] : 'uploads/default-photo.PNG';
 ?>
-
 
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -136,56 +131,3 @@ table th:hover {
 </head>
           
 <body>
-    <div class="container my-5">
-        <h1 class="text-center text-bold">Profil de l'Apprenant</h1>
-        <div class="card border-primary mb-3 rounded-3 shadow">
-            <div class="card-header bg-secondary-subtle text-success rounded-3 d-flex justify-content-center align-items-center">
-                <h3 class="mb-0"><i class="fas fa-user-graduate me-2"></i> Informations de l'Apprenant</h3>
-            </div>
-            <div class="card-body shadow">
-                <div class="row">
-                    <!-- Photo de l'apprenant -->
-                    <div class="col-md-4 text-center">
-                        <img
-                            src="<?php echo htmlspecialchars($photo); ?>"
-                            alt="Apprenant"
-                            class="img-fluid rounded-circle"
-                            style="width: 150px; height: 150px; object-fit: cover;"
-                        />
-                    </div>
-
-                  
-                    <div class="col-md-8">
-                    <p class="text-muted">Noms et Prenoms:    <h4 class="text-success"><span><?php echo htmlspecialchars($nom . ' ' . $prenom); ?></span></h4></p>
-                        <p class="text-muted">Email: <?php echo htmlspecialchars($email); ?></p>
-                        <hr />
-                        <div>
-                            <h5>Téléphone</h5>
-                            <p><?php echo htmlspecialchars($telephone); ?></p>
-                        </div>
-                       
-                        <div>
-                            <h5>Date d'inscription</h5>
-                            <p><?php echo htmlspecialchars($date); ?></p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Button to modify the profile -->
-        <div class="text-center">
-            <button
-                class="btn btn-warning rounded-5 shadow"
-                onclick="alert('Modifier fonctionnalité non implémentée')"
-            >
-                <i class="fas fa-edit me-2"></i>Modifier Profil
-            </button>
-        </div>
-    </div>
-
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-</body>
-</html>

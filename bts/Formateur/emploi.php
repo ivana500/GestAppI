@@ -1,128 +1,225 @@
 <?php
-// Start the session to manage the emplois du temps across page reloads
-session_start();
-
-// Initialize the emplois du temps if not already set
-if (!isset($_SESSION['emploisDuTemps'])) {
-    $_SESSION['emploisDuTemps'] = [];
+session_start();  
+if (!isset($_SESSION['nom']) || !isset($_SESSION['prenom'])) {
+   
+    header("Location: index.php");
+    exit();
 }
 
-// Handle form submission to add a new emploi du temps
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit'])) {
-    $newEmploi = [
-        'heureDebut' => $_POST['heureDebut'],
-        'heureFin' => $_POST['heureFin'],
-        'jour' => $_POST['jour'],
-        'cours' => $_POST['cours']
-    ];
-    $_SESSION['emploisDuTemps'][] = $newEmploi; // Add the new emploi to the session
-
-    // Redirect to avoid resubmission after refresh
-    header('Location: ' . $_SERVER['PHP_SELF']);
-    exit;
-}
-
-// Handle deletion of a specific emploi du temps
-if (isset($_GET['delete'])) {
-    $indexToDelete = $_GET['delete'];
-    unset($_SESSION['emploisDuTemps'][$indexToDelete]); // Remove the emploi
-    $_SESSION['emploisDuTemps'] = array_values($_SESSION['emploisDuTemps']); // Reindex the array
-
-    // Redirect to avoid URL manipulation
-    header('Location: ' . $_SERVER['PHP_SELF']);
-    exit;
-}
-
+$nom = $_SESSION['nom'];
+$prenom = $_SESSION['prenom'];
 ?>
+
+<?php
+
+require_once '../Fonctions/db_connection.php';
+
+$conn = getConnection();
+
+
+$sqlCours = "SELECT * FROM Cours";
+$coursResult = $conn->query($sqlCours);
+$cours = [];
+if ($coursResult->num_rows > 0) {
+    while ($row = $coursResult->fetch_assoc()) {
+        $cours[] = $row;
+    }
+}
+
+$sql = "SELECT A.idE, A.heureDebut, A.heureFin, A.jour, C.titreC
+        FROM emploiTemps A
+        JOIN refer R ON A.idE = R.idE
+        JOIN Cours C ON R.idC = C.idC";
+
+$result = $conn->query($sql);
+
+if (!$result) {
+    die("Erreur SQL : " . $conn->error);
+}
+
+$emploi = [];
+if ($result->num_rows > 0) {
+    while ($row = $result->fetch_assoc()) {
+        $emploi[] = $row;
+    }
+} else {
+    echo "Aucun emploi de temps trouvé dans la base de données.<br>";
+}
+?> 
+
 
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emploi du Temps</title>
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
-    <script src="https://kit.fontawesome.com/a076d05399.js"></script>
+    <title>Dashboard Admin</title>
+    <link href="../bootstrap/css/bootstrap.min.css" rel="stylesheet">
+    <link href="../fontawesome/css/all.css" rel="stylesheet">
+    
+    <style>
+       
+.sidebar {
+    width: 300px;
+}
+.sidebar .nav-link {
+    position: relative;
+    padding: 10px;
+    transition: all 0.3s ease-in-out; 
+    text-decoration: none;
+}
+
+.sidebar .nav-link:hover {
+    border: 2px solid black; 
+    color: black; 
+}
+
+
+.sidebar .nav-link i {
+    transition: transform 0.3s ease-in-out; 
+}
+
+.sidebar .nav-link:hover i {
+    transform: rotate(360deg);
+}
+
+
+.sidebar .nav-link:active {
+    color: red; 
+    border: 2px solid black; 
+}
+
+.sidebar .nav-link:focus {
+    outline: none;
+    box-shadow: red; 
+}
+
+
+
+table, th, td {
+    border: 1px solid #ddd; 
+}
+
+table th:hover {
+    background-color: #8de1e3; 
+}
+
+
+        .content {
+            margin-left: 300px;
+        }
+
+        header {
+            background-color: rgb(111, 235, 239);
+        }
+
+        .search-bar {
+            margin-left: auto;
+        }
+    </style>
+     
+     <header class="text-white p-3 bg-light">
+        <div class="container-fluid d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center search-bar">
+                <input type="text" class="form-control me-2" placeholder="Recherche..." aria-label="Recherche">
+            </div>
+            <div class="d-flex align-items-center text-dark text-bold">
+                <span><?php echo $nom . ' ' . $prenom; ?></span>
+                
+            </div>
+        </div>
+    </header>
+
+    <div class="d-flex">
+        
+        <div class="sidebar flex-shrink-0 p-3 bg-light">
+            
+
+            
+    <h4 class="text-center mb-4 y" >
+        <a href="acceuil.php" style="text-decoration: none; color: blue;">Formateur</a>
+    </h4>
+
+    <div class="d-flex justify-content-center mb-3 ">
+        <img src="" alt="User" class="rounded-circle" style="width: 60px; height: 60px;">
+    </div>
+
+    <div class="nav flex-column">
+        <li class="nav-item mb-3">
+            <a class="nav-link text-dark " href="profil.php">
+                <i class="fas fa-list me-2 bg-light"></i>Profil
+            </a>
+        </li>
+    
+        <li class="nav-item mb-3">
+            <a class="nav-link text-dark" href="emploi.php">
+                <i class="fas fa-calendar me-2"></i>Emploi du Temps
+            </a>
+        </li>
+        <li class="nav-item mb-3">
+            <a class="nav-link text-dark" href="Rapport.php">
+                <i class="fas fa-file-alt me-2"></i> Rapport
+            </a>
+        </li>
+       
+    </div>
+</div>
+        
 </head>
-<body>
-    <div class="container my-5">
-        <h1 class="text-center text-bold">Emploi du Temps</h1>
-        <div class="card border-primary mb-3 rounded-3">
-            <div class="card-header d-flex justify-content-between align-items-center bg-secondary-subtle text-success rounded-3">
-                <h3 class="mb-0"><i class="fas fa-calendar-alt me-2"></i> Emploi du Temps</h3>
-                <button class="btn btn-primary" data-toggle="modal" data-target="#addEmploiModal">Ajouter un Emploi</button>
-            </div>
-            <div class="card-body shadow">
-                <div class="table-responsive">
-                    <table class="table table-striped table-hover table-bordered rounded-3 align-middle mt-4">
-                        <thead class="table-primary">
-                            <tr class="text-center fw-bold">
-                                <th scope="col">ID</th>
-                                <th scope="col">Heure de Début</th>
-                                <th scope="col">Heure de Fin</th>
-                                <th scope="col">Jour</th>
-                                <th scope="col">Cours</th>
-                                <th scope="col">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($_SESSION['emploisDuTemps'] as $index => $emploi): ?>
-                                <tr>
-                                    <td class="text-center"><?= $index + 1 ?></td>
-                                    <td class="text-center"><?= htmlspecialchars($emploi['heureDebut']) ?></td>
-                                    <td class="text-center"><?= htmlspecialchars($emploi['heureFin']) ?></td>
-                                    <td class="text-center"><?= htmlspecialchars($emploi['jour']) ?></td>
-                                    <td class="text-center"><?= htmlspecialchars($emploi['cours']) ?></td>
-                                    <td class="text-center">
-                                        <a href="#" class="btn btn-warning btn-sm me-2">Modifier</a>
-                                        <a href="?delete=<?= $index ?>" class="btn btn-danger btn-sm">Supprimer</a>
-                                    </td>
+          
+
+        <!-- Main Content -->
+        <div class="content flex-grow-1 p-5">
+            <h1 class="text-center text-bold text-primary">Emploi du Temps</h1>
+
+            <div class="card border-primary mb-3 rounded-3">
+                <div class="card-header d-flex justify-content-between align-items-center bg-secondary-subtle text-primary rounded-3">
+                    <h3 class="mb-0"><i class="fas fa-calendar me-2"></i>Emploi du Temps</h3>
+                </div>
+                <div class="card-body shadow">
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover table-bordered rounded-3 align-middle mt-4">
+                            <thead class="table-success">
+                                <tr class="text-center fw-bold">
+                                    <th scope="col">ID</th>
+                                    <th scope="col">Cours</th>
+                                    <th scope="col">Heure de Début</th>
+                                    <th scope="col">Heure de Fin</th>
+                                    <th scope="col">Jour</th>
+                                   
                                 </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody>
+    <?php
+    if (isset($emploi) && is_array($emploi)) {
+        foreach ($emploi as $index => $emploiItem) {
+            ?>
+            <tr class="text-center">
+                <td><?= $index + 1 ?></td>
+                <td><?= $emploiItem['titreC'] ?></td>
+                <td><?= $emploiItem['heureDebut'] ?></td>
+                <td><?= $emploiItem['heureFin'] ?></td>
+                <td><?= $emploiItem['jour'] ?></td>
+              
+            </tr>
+            <?php
+        }
+    } else {
+        echo "Aucun emploi de temps disponible.";
+    }
+    ?>
+</tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal to add new emploi -->
-    <div class="modal fade" id="addEmploiModal" tabindex="-1" aria-labelledby="addEmploiModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="addEmploiModalLabel">Ajouter un Emploi du Temps</h5>
-                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                        <span aria-hidden="true">&times;</span>
-                    </button>
-                </div>
-                <div class="modal-body">
-                    <form method="POST">
-                        <div class="form-group">
-                            <label for="heureDebut">Heure de Début</label>
-                            <input type="time" class="form-control" id="heureDebut" name="heureDebut" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="heureFin">Heure de Fin</label>
-                            <input type="time" class="form-control" id="heureFin" name="heureFin" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="jour">Jour</label>
-                            <input type="text" class="form-control" id="jour" name="jour" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="cours">Cours</label>
-                            <input type="text" class="form-control" id="cours" name="cours" required>
-                        </div>
-                        <button type="submit" name="submit" class="btn btn-primary">Ajouter</button>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
 </body>
+
 </html>
