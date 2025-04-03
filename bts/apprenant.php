@@ -26,7 +26,6 @@ if (isset($_POST['search'])) {
 
 $conn = getConnection();
 
-
 if ($searchQuery != "") {
     $query = "SELECT * FROM apprenant WHERE nomAp LIKE ? OR prenomAp LIKE ? OR email LIKE ? OR telephone LIKE ? OR cours LIKE ?";
     $stmt = $conn->prepare($query);
@@ -46,23 +45,43 @@ while ($row = $result->fetch_assoc()) {
 
 $stmt->close();
 
+if (isset($_GET['code'])) {
+    $code = $_GET['code'];
 
+    $sqlDeleteSuivie = "DELETE FROM suivieCours WHERE idAp = ?";
+    $stmtSuivie = $conn->prepare($sqlDeleteSuivie);
+    $stmtSuivie->bind_param("s", $code);  
+    $stmtSuivie->execute();
+    $stmtSuivie->close();
 
-$conn->close();
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $action = isset($_POST['action']) ? $_POST['action'] : '';
-    switch ($action) {
-        case 'deleteApp':
-            $code = $_POST['code'];
-            $del = "DELETE FROM apprenant WHERE code = '$code'";
-            $con = getConnection();
-            $delet = $con->query($del);
-            echo json_encode(['success' => $delet]);
-            break;
+    $sqlDeleteInscription = "DELETE FROM inscription WHERE idAp = ?";
+    $stmtInscription = $conn->prepare($sqlDeleteInscription);
+    $stmtInscription->bind_param("s", $code);  
+    $stmtInscription->execute();
+    $stmtInscription->close();
+
+    $sqlDeleteApprenant = "DELETE FROM apprenant WHERE code = ?";
+    $stmtApprenant = $conn->prepare($sqlDeleteApprenant);
+    $stmtApprenant->bind_param("s", $code);  
+    if ($stmtApprenant->execute()) {
+        $_SESSION['success_message'] = "Apprenant supprimé avec succès!";
+    } else {
+        $_SESSION['error_message'] = "Erreur lors de la suppression de l'apprenant.";
     }
-}
+    $stmtApprenant->close();
+    $conn->close();
 
+    if (!isset($_SESSION['redirected'])) {
+        $_SESSION['redirected'] = true;
+        header('Location: apprenant.php');
+        exit;
+    } else {
+        unset($_SESSION['redirected']);
+    }
+    exit;
+}
 ?>
+
 
 
 <!DOCTYPE html>
@@ -280,9 +299,9 @@ table th:hover {
                                 <a class="btn btn-warning btn-edit me-2" href="traiteApp.php?code=<?= $apprenant['code'] ?>">
                                 <i class="fas fa-pencil-alt"></i>
                                 </a>
-                                <button class="btn btn-danger btn-delete" data-code="<?= $apprenant['code'] ?>">
-                                    <i class="fas fa-trash-alt"></i>
-                                </button>
+                                <a class="btn btn-danger btn-delete" href="apprenant.php?code=<?= $apprenant['code'] ?>" onClick="return confirm('Voulez-vous supprimer ce suivi ?')">
+                                <i class="fas fa-trash-alt"></i>
+                                </a>
                             </td>
                         </tr>
                     <?php endforeach; ?>
@@ -301,29 +320,6 @@ table th:hover {
     <script src="js/bootstrap.min.js" type="text/javascript"></script>
     <script src="js/jquery-3.7.1.min.js" type="text/javascript"></script>
     <script src="js/popper.min.js" type="text/javascript"></script>
-    <script>
- $(document).on('click', '.btn-delete', function() {
-    var code = $(this).attr('id'); 
     
-    
-    if (confirm("Êtes-vous sûr de vouloir supprimer cet apprenant ?")) {
-        $.ajax({
-            url: 'traiteApp.php',
-            type: 'POST',
-            data: {
-                code: code,
-                action: 'deleteApp'
-            },
-            success: function(response) {
-                location.reload();
-            },
-            error: function() {
-                alert("Erreur de suppression");
-            }
-        });
-    }
-});
-
-    </script>
 </body>
 </html>

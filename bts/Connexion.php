@@ -118,7 +118,7 @@
             <!-- Liens supplémentaires -->
             <div class="text-center mt-4">
                 <a href="mot-de-passe-oublie.php" class="text-muted">Mot de passe oublié ?</a> |
-                <a href="inscriptionA.php" class="text-muted">S'inscrire</a>
+                <a href="ins.php" class="text-muted">S'inscrire</a>
             </div>
         </div>
     </div>

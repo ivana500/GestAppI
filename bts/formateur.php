@@ -93,10 +93,56 @@ while ($row = $result->fetch_assoc()) {
 }
 
 $stmt->close();
-closeConnection($conn);
+if (isset($_GET['matricule'])) {
+    $matricule = $_GET['matricule'];
 
+    // Récupérer les cours associés au formateur
+    $sqlGetCours = "SELECT idC FROM Cours WHERE idForm = ?";
+    $stmtGetCours = $conn->prepare($sqlGetCours);
+    $stmtGetCours->bind_param("s", $matricule);
+    $stmtGetCours->execute();
+    $resultCours = $stmtGetCours->get_result();
+    
+    // Supprimer d'abord les enregistrements dans la table suivieCours
+    while ($row = $resultCours->fetch_assoc()) {
+        $idC = $row['idC'];
+
+        // Supprimer les enregistrements de suivieCours associés à ces cours
+        $sqlDeleteSuivi = "DELETE FROM suivieCours WHERE idC = ?";
+        $stmtSuivi = $conn->prepare($sqlDeleteSuivi);
+        $stmtSuivi->bind_param("s", $idC);
+        $stmtSuivi->execute();
+        $stmtSuivi->close();
+    }
+
+    $sqlDeleteCours = "DELETE FROM Cours WHERE idForm = ?";
+    $stmtCours = $conn->prepare($sqlDeleteCours);
+    $stmtCours->bind_param("s", $matricule);  
+    $stmtCours->execute();
+    $stmtCours->close();
+
+    $sqlDeleteFormateur = "DELETE FROM Formateur WHERE matricule = ?";
+    $stmtFormateur = $conn->prepare($sqlDeleteFormateur);
+    $stmtFormateur->bind_param("s", $matricule);  
+    if ($stmtFormateur->execute()) {
+        $_SESSION['success_message'] = "Formateur supprimé avec succès!";
+    } else {
+        $_SESSION['error_message'] = "Erreur lors de la suppression du formateur.";
+    }
+    $stmtFormateur->close();
+    $conn->close();
+
+    // Redirection
+    if (!isset($_SESSION['redirected'])) {
+        $_SESSION['redirected'] = true;
+        header('Location: formateur.php');
+        exit;
+    } else {
+        unset($_SESSION['redirected']);
+    }
+    exit;
+}
 ?>
-
 
 <!DOCTYPE html>
 <html lang="fr">
@@ -310,8 +356,8 @@ table th:hover {
                                 <a class="btn btn-warning btn-edit me-2" href="traiteForm.php?matricule=<?=$formateur['matricule']?>">
                                 <i class="fas fa-pencil-alt"></i>
                                 </a>
-                                <a href="formateur.php?delete=<?= $formateur['matricule'] ?>" class="btn btn-danger btn-delete" id="<?= $formateur['matricule'] ?>">
-                                    <i class="fas fa-trash-alt"></i>
+                                <a class="btn btn-danger btn-delete" href="formateur.php?matricule=<?= $formateur['matricule'] ?>" onClick="return confirm('Voulez-vous supprimer ce suivi ?')">
+                                <i class="fas fa-trash-alt"></i>
                                 </a>
                             </td>
                         </tr>
@@ -332,29 +378,6 @@ table th:hover {
     <script src="js/bootstrap.min.js" type="text/javascript"></script>
     <script src="js/jquery-3.7.1.min.js" type="text/javascript"></script>
     <script src="js/popper.min.js" type="text/javascript"></script>  
-      <script>
- $(document).on('click', '.btn-delete', function() {
-    var matricule = $(this).attr('id'); 
-    
-    
-    if (confirm("Êtes-vous sûr de vouloir supprimer ce formateur ?")) {
-        $.ajax({
-            url: 'formateur.php',
-            type: 'POST',
-            data: {
-                matricule: matricule,
-                action: 'deleteApp'
-            },
-            success: function(response) {
-                location.reload();
-            },
-            error: function() {
-                alert("Erreur de suppression");
-            }
-        });
-    }
-});
-
-    </script>
+   
 </body>
 </html>

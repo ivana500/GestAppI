@@ -15,7 +15,7 @@ CREATE TABLE suivieCours (
     , date varchar(20), 
     FOREIGN KEY(idAp) REFERENCES Apprenant(code), 
     FOREIGN KEY(idC) REFERENCES Cours(idC), 
-    PRIMARY KEY(idAp, idC, date)  
+    PRIMARY KEY(idAp, idC)  
 );
 use gestionApprenant;
 create table inscription(numero int auto_increment primary key,idAp varchar(20), montant int, foreign key(idAp) references Apprenant(code));

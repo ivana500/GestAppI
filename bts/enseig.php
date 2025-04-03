@@ -82,26 +82,46 @@ $resultTypes = $con->query($sqlTypes);
 
 if (isset($_GET['idC'])) {
     $idC = $_GET['idC'];
+    $conn = getConnection();
 
-    $sqlDelete = "DELETE FROM Cours WHERE idC = ?";
-    $stmt = $con->prepare($sqlDelete);
-    $stmt->bind_param("s", $idC);
+    // 1. Supprimer les entrées dans la table `refer` qui associent le cours à l'emploiTemps
+    $sqlDeleteRefer = "DELETE FROM refer WHERE idC = ?";
+    $stmtRefer = $conn->prepare($sqlDeleteRefer);
+    $stmtRefer->bind_param("s", $idC);  
+    $stmtRefer->execute();
+    $stmtRefer->close();
 
-    if ($stmt->execute()) {
+    // 2. Supprimer les entrées dans la table `suivieCours` qui associent le cours aux apprenants
+    $sqlDeleteSuivieCours = "DELETE FROM suivieCours WHERE idC = ?";
+    $stmtSuivieCours = $conn->prepare($sqlDeleteSuivieCours);
+    $stmtSuivieCours->bind_param("s", $idC);  
+    $stmtSuivieCours->execute();
+    $stmtSuivieCours->close();
+
+    // 3. Supprimer les entrées dans la table `Cours` (le cours à proprement parler)
+    $sqlDeleteCours = "DELETE FROM Cours WHERE idC = ?";
+    $stmtCours = $conn->prepare($sqlDeleteCours);
+    $stmtCours->bind_param("s", $idC);  
+    if ($stmtCours->execute()) {
         $_SESSION['success_message'] = "Cours supprimé avec succès!";
-        header('Location: cours.php');
-        exit;
     } else {
         $_SESSION['error_message'] = "Erreur lors de la suppression du cours.";
-        header('Location: cours.php');
-        exit;
     }
+    $stmtCours->close();
+    $conn->close();
 
-    $stmt->close();
-    $con->close();
+    // Redirection après la suppression
+    if (!isset($_SESSION['redirected'])) {
+        $_SESSION['redirected'] = true;
+        header('Location: cours.php');  
+        exit;
+    } else {
+        unset($_SESSION['redirected']);
+    }
+    exit;
 }
-
 ?>
+
 
 <!DOCTYPE html>
 <html lang="fr">

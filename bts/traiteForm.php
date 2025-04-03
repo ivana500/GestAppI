@@ -8,7 +8,7 @@ if (isset($_GET['matricule'])) {
     $conn = getConnection();
     $sql = "SELECT * FROM formateur WHERE matricule = ?";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param('s', $code);  // Assurez-vous que c'est 's' pour string
+    $stmt->bind_param('s', $code);  
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -42,7 +42,7 @@ if (isset($_GET['matricule'])) {
        
         $updateSql = "UPDATE formateur SET nomForm = ?, prenomForm = ?, email = ?, telephone = ?, specialite = ?, photo = ? WHERE matricule = ?";
         $stmt = $conn->prepare($updateSql);
-        $stmt->bind_param('ssssssi', $nomAp, $prenomAp, $email, $telephone, $specialite, $photo, $code);
+        $stmt->bind_param('sssssss', $nomAp, $prenomAp, $email, $telephone, $specialite, $photo, $code);
 
         if ($stmt->execute()) {
             header("Location: formateur.php");  
@@ -239,10 +239,10 @@ table th:hover {
 <div class="container mt-5">
     <h2>Modifier le Formateur</h2>
 
-    <form action="traiteForm.php>" method="POST" enctype="multipart/form-data">
+    <form action="" method="POST" enctype="multipart/form-data">
     <div class="mb-3">
-            <label for="matricule" class="form-label">Nom</label>
-            <input type="text" class="form-control" id="matricule" name="matricule"  required>
+            <label for="matricule" class="form-label">Matricule</label>
+            <input type="text" class="form-control" id="matricule" name="matricule" value="<?= $formateurs['matricule'] ?>" required>
         </div>
         
         <div class="mb-3">

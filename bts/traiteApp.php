@@ -29,7 +29,7 @@ if (isset($_GET['code'])) {
 
     $sql = "SELECT * FROM Apprenant WHERE code = ?";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param('i', $code);
+    $stmt->bind_param('s', $code);
     $stmt->execute();
     $result = $stmt->get_result();
 
@@ -62,7 +62,7 @@ if (isset($_GET['code'])) {
 
         $updateSql = "UPDATE Apprenant SET nomAp = ?, prenomAp = ?, email = ?, telephone = ?, photo = ? WHERE code = ?";
         $stmt = $conn->prepare($updateSql);
-        $stmt->bind_param('sssssi', $nomAp, $prenomAp, $email, $telephone, $photo, $code);
+        $stmt->bind_param('ssssss', $nomAp, $prenomAp, $email, $telephone, $photo, $code);
 
         if ($stmt->execute()) {
             header("Location: apprenant.php");
