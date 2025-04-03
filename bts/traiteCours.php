@@ -3,56 +3,51 @@ require_once 'Fonctions/db_connection.php';
 require_once 'Fonctions/fonctions.php';
 
 if (isset($_GET['idC'])) {
-    // Récupérer l'ID du cours
     $idC = $_GET['idC'];
-
-    // Connexion à la base de données
     $conn = getConnection();
 
-    // Requête pour récupérer les données du cours
-    $sql = "SELECT * FROM Cours WHERE idC = ?";
+    $sql = "SELECT * FROM cours WHERE idC = ?";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param('s', $idC);
     $stmt->execute();
     $result = $stmt->get_result();
 
-    // Si le cours existe, récupérer les données du cours
     if ($result->num_rows > 0) {
-        $cours = $result->fetch_assoc();
+        $cours = $result->fetch_assoc();  
     } else {
-        echo "Le cours avec l'ID $idC n'existe pas.";
+        echo "Aucun cours trouvé.";
         exit;
     }
 
-    // Traitement du formulaire de modification
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $id = $_POST['id'];
-        $titre = $_POST['titre'];
-        $type = $_POST['type'];
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['modifier'])) {
+        $titreC = $_POST['titre'];
+        $typeC = $_POST['type'];
         $description = $_POST['description'];
         $dateD = $_POST['dateD'];
         $dateF = $_POST['dateF'];
 
-        $updateSql = "UPDATE Cours SET idC = ?, titreC = ?, type = ?, description = ?, dateD = ?, dateF = ? WHERE idC = ?";
+        $updateSql = "UPDATE cours SET titreC = ?, type = ?, description = ?, dateD = ?, dateF = ? WHERE idC = ?";
         $stmt = $conn->prepare($updateSql);
-        $stmt->bind_param('sssssss', $id, $titre, $type, $description, $dateD, $dateF, $idC);
+        $stmt->bind_param('ssssss', $titreC, $typeC, $description, $dateD, $dateF, $idC);
 
         if ($stmt->execute()) {
-            $_SESSION['success_message'] = "Cours modifié avec succès!";
-            header("Location: cours.php");
+            $_SESSION['success_message'] = "Cours mis à jour avec succès!";
+            header("Location: cours.php");  
             exit;
         } else {
-            echo "Erreur lors de la modification du cours.";
+            echo "Erreur lors de la mise à jour du cours.";
         }
     }
 
     $stmt->close();
     $conn->close();
 } else {
-    echo "ID de cours manquant.";
+    header("Location: cours.php");
     exit;
 }
 ?>
+
+
 
 
 
@@ -238,34 +233,32 @@ table th:hover {
 
     <form action="" method="POST">
     <div class="mb-3">
-        <label for="id" class="form-label">Identifiant</label>
-        <input type="text" class="form-control" id="id" name="id" value="<?= $cours['idC'] ?>" required>
-    </div>
-    <div class="mb-3">
         <label for="titre" class="form-label">Titre du Cours</label>
-        <input type="text" class="form-control" id="titre" name="titre" value="<?= $cours['titreC'] ?>" required>
+        <input type="text" class="form-control" id="titre" name="titre" value="<?= $cours['titreC']; ?>" required>
     </div>
     <div class="mb-3">
         <label for="type" class="form-label">Type de Cours</label>
-        <input type="text" class="form-control" id="type" name="type" value="<?= $cours['type'] ?>" required>
+        <input type="text" class="form-control" id="type" name="type" value="<?= $cours['type']; ?>" required>
     </div>
     <div class="mb-3">
         <label for="description" class="form-label">Description</label>
-        <textarea class="form-control" id="description" name="description" required><?= $cours['description'] ?></textarea>
+        <textarea class="form-control" id="description" name="description" required><?= $cours['description']; ?></textarea>
     </div>
     <div class="mb-3">
         <label for="dateD" class="form-label">Date de début</label>
-        <input class="form-control" id="dateD" name="dateD" type="date" value="<?= $cours['dateD'] ?>" required>
+        <input class="form-control" id="dateD" name="dateD" type="date" value="<?= $cours['dateD']; ?>" required>
     </div>
     <div class="mb-3">
         <label for="dateF" class="form-label">Date de fin</label>
-        <input class="form-control" id="dateF" name="dateF" type="date" value="<?= $cours['dateF'] ?>" required>
+        <input class="form-control" id="dateF" name="dateF" type="date" value="<?= $cours['dateF']; ?>" required>
     </div>
+
     <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
-        <button type="submit" class="btn btn-success">Modifier Cours</button>
+        <button type="submit" name="modifier" class="btn btn-success">Modifier Cours</button>
     </div>
 </form>
+
 </div>
 
 <script src="bootstrap/js/bootstrap.bundle.min.js"></script>
