@@ -1,48 +1,82 @@
 <?php
+session_start();  
+if (!isset($_SESSION['nom']) || !isset($_SESSION['prenom'])) {
+   
+    header("Location: index.php");
+    exit();
+}
+
+$nom = $_SESSION['nom'];
+$prenom = $_SESSION['prenom'];
+
+if (!isset($_SESSION['theme'])) {
+    $_SESSION['theme'] = 'light';  
+}
+
+$themeClass = $_SESSION['theme'] === 'dark' ? 'dark-theme' : 'light-theme';
+?>
+
+<?php
 require_once 'Fonctions/db_connection.php';
 require_once 'Fonctions/fonctions.php';
 
-if (isset($_GET['idC'])) {
-    $idC = $_GET['idC'];
+if (isset($_GET['idE'])) {
+    $idE = $_GET['idE'];
     $conn = getConnection();
 
-    $sql = "SELECT * FROM cours WHERE idC = ?";
+    // Récupérer les informations de l'emploi du temps
+    $sql = "SELECT * FROM EmploiTemps WHERE idE = ?";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param('s', $idC);
+    $stmt->bind_param('i', $idE);
     $stmt->execute();
     $result = $stmt->get_result();
 
     if ($result->num_rows > 0) {
-        $cours = $result->fetch_assoc();  
+        $emploiTemps = $result->fetch_assoc();  
     } else {
-        echo "Aucun cours trouvé.";
+        echo "Aucun emploi du temps trouvé.";
         exit;
     }
 
-    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['modifier'])) {
-        $titreC = $_POST['titre'];
-        $typeC = $_POST['type'];
-        $description = $_POST['description'];
-        $dateD = $_POST['dateD'];
-        $dateF = $_POST['dateF'];
+    $sqlRefer = "SELECT idC FROM refer WHERE idE = ?";
+    $stmt = $conn->prepare($sqlRefer);
+    $stmt->bind_param('i', $idE);
+    $stmt->execute();
+    $resultRefer = $stmt->get_result();
+    $cours = $resultRefer->fetch_assoc();
 
-        $updateSql = "UPDATE cours SET titreC = ?, type = ?, description = ?, dateD = ?, dateF = ? WHERE idC = ?";
+    if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['modifier'])) {
+        $coursId = $_POST['cours'];
+        $heureDebut = $_POST['heureDebut'];
+        $heureFin = $_POST['heureFin'];
+        $jour = $_POST['jour'];
+
+        $updateSql = "UPDATE EmploiTemps SET heureDebut = ?, heureFin = ?, jour = ? WHERE idE = ?";
         $stmt = $conn->prepare($updateSql);
-        $stmt->bind_param('ssssss', $titreC, $typeC, $description, $dateD, $dateF, $idC);
+        $stmt->bind_param('sssi', $heureDebut, $heureFin, $jour, $idE);
 
         if ($stmt->execute()) {
-            $_SESSION['success_message'] = "Cours mis à jour avec succès!";
-            header("Location: cours.php");  
-            exit;
+
+            $updateReferSql = "UPDATE refer SET idC = ? WHERE idE = ?";
+            $stmt = $conn->prepare($updateReferSql);
+            $stmt->bind_param('si', $coursId, $idE);
+
+            if ($stmt->execute()) {
+                $_SESSION['success_message'] = "Emploi du temps et cours mis à jour avec succès!";
+                header("Location: emploiTemps.php");
+                exit;
+            } else {
+                echo "Erreur lors de la mise à jour de l'association entre l'emploi du temps et le cours.";
+            }
         } else {
-            echo "Erreur lors de la mise à jour du cours.";
+            echo "Erreur lors de la mise à jour de l'emploi du temps.";
         }
     }
 
     $stmt->close();
     $conn->close();
 } else {
-    header("Location: cours.php");
+    header("Location: emploiTemps.php");
     exit;
 }
 ?>
@@ -233,29 +267,42 @@ table th:hover {
 
     <form action="" method="POST">
     <div class="mb-3">
-        <label for="titre" class="form-label">Titre du Cours</label>
-        <input type="text" class="form-control" id="titre" name="titre" value="<?= $cours['titreC']; ?>" required>
+        <label for="cours" class="form-label">Sélectionner un Cours</label>
+        <select class="form-select" id="cours" name="cours" required>
+            <option value="">Sélectionner un Cours</option>
+            <?php
+            // Récupérer tous les cours disponibles
+            $sql = "SELECT * FROM Cours";
+            $stmt = $conn->prepare($sql);
+            $stmt->execute();
+            $result = $stmt->get_result();
+
+            // Afficher chaque cours dans le select
+            while ($cours_item = $result->fetch_assoc()) {
+                // Vérifier si le cours actuel est le même que celui de l'emploi du temps
+                $selected = ($cours_item['idC'] == $cours['idC']) ? 'selected' : '';
+                echo "<option value='{$cours_item['idC']}' $selected>{$cours_item['titreC']}</option>";
+            }
+            ?>
+        </select>
+    </div>
+
+    <div class="mb-3">
+        <label for="heureDebut" class="form-label">Heure de Début</label>
+        <input type="time" class="form-control" id="heureDebut" name="heureDebut" value="<?= $emploiTemps['heureDebut'] ?>" required>
     </div>
     <div class="mb-3">
-        <label for="type" class="form-label">Type de Cours</label>
-        <input type="text" class="form-control" id="type" name="type" value="<?= $cours['type']; ?>" required>
+        <label for="heureFin" class="form-label">Heure de Fin</label>
+        <input type="time" class="form-control" id="heureFin" name="heureFin" value="<?= $emploiTemps['heureFin'] ?>" required>
     </div>
     <div class="mb-3">
-        <label for="description" class="form-label">Description</label>
-        <textarea class="form-control" id="description" name="description" required><?= $cours['description']; ?></textarea>
-    </div>
-    <div class="mb-3">
-        <label for="dateD" class="form-label">Date de début</label>
-        <input class="form-control" id="dateD" name="dateD" type="date" value="<?= $cours['dateD']; ?>" required>
-    </div>
-    <div class="mb-3">
-        <label for="dateF" class="form-label">Date de fin</label>
-        <input class="form-control" id="dateF" name="dateF" type="date" value="<?= $cours['dateF']; ?>" required>
+        <label for="jour" class="form-label">Jour</label>
+        <input type="date" class="form-control" id="jour" name="jour" value="<?= $emploiTemps['jour'] ?>" required>
     </div>
 
     <div class="modal-footer">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
-        <button type="submit" name="modifier" class="btn btn-success">Modifier Cours</button>
+        <button type="submit" class="btn btn-warning" name="modifier">Modifier Emploi du Temps</button>
     </div>
 </form>
 

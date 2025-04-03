@@ -1,4 +1,22 @@
 <?php
+session_start();  
+if (!isset($_SESSION['nom']) || !isset($_SESSION['prenom'])) {
+   
+    header("Location: index.php");
+    exit();
+}
+
+$nom = $_SESSION['nom'];
+$prenom = $_SESSION['prenom'];
+
+if (!isset($_SESSION['theme'])) {
+    $_SESSION['theme'] = 'light';  
+}
+
+$themeClass = $_SESSION['theme'] === 'dark' ? 'dark-theme' : 'light-theme';
+?>
+
+<?php
 require_once 'Fonctions/db_connection.php';
 require_once 'Fonctions/fonctions.php';
 
@@ -291,7 +309,7 @@ table th:hover {
             <small>Actuelle: <img src="uploads/<?= $apprenant['photo'] ?>" alt="Photo" style="width: 50px; height: 50px;"></small>
         </div>
 
-        <button type="submit" name="modifier" class="btn btn-primary">Sauvegarder les modifications</button>
+        <button type="submit" name="modifier" class="btn btn-warning">Sauvegarder les modifications</button>
     </form>
 </div>
 

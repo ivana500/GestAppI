@@ -22,7 +22,7 @@ if (isset($_POST['username']) && isset($_POST['password'])) {
         $_SESSION['nom'] = $ligneAdmin['nomAd'];
         $_SESSION['prenom'] = $ligneAdmin['prenomAd'];
         var_dump($_SESSION); 
-        redirection("apprenant.php");
+        redirection("dasboard.php");
     }
    
     else {

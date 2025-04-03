@@ -1,4 +1,22 @@
 <?php
+session_start();  
+if (!isset($_SESSION['nom']) || !isset($_SESSION['prenom'])) {
+   
+    header("Location: index.php");
+    exit();
+}
+
+$nom = $_SESSION['nom'];
+$prenom = $_SESSION['prenom'];
+
+if (!isset($_SESSION['theme'])) {
+    $_SESSION['theme'] = 'light';  
+}
+
+$themeClass = $_SESSION['theme'] === 'dark' ? 'dark-theme' : 'light-theme';
+?>
+
+<?php
 require_once 'Fonctions/db_connection.php';
 require_once 'Fonctions/fonctions.php';
 
@@ -306,7 +324,7 @@ table th:hover {
 
     <div class="d-flex justify-content-between">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-        <button type="submit" name="modifier" class="btn btn-success">Enregistrer</button>
+        <button type="submit" name="modifier" class="btn btn-warning">modifier</button>
     </div>
 </form>
 </div>
