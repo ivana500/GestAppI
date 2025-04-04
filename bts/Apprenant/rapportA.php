@@ -2,12 +2,20 @@
 session_start();  
 if (!isset($_SESSION['nom']) || !isset($_SESSION['prenom'])) {
    
-    header("Location: index.php");
+    header("Location: ../connexion.php");
     exit();
 }
 
 $nom = $_SESSION['nom'];
 $prenom = $_SESSION['prenom'];
+if (!isset($_SESSION['role']) || $_SESSION['role'] != 'apprenant') {
+    header("Location: ../index.php");  
+    exit();
+}
+$photo = isset($_SESSION['photo']) && !empty($_SESSION['photo']) ? 
+         'http://' . $_SERVER['HTTP_HOST'] . '/GestAppI/bts/uploads/' . $_SESSION['photo'] : 
+         'uploads/default-photo.PNG';
+
 ?>
 
 <!DOCTYPE html>
@@ -104,8 +112,12 @@ table th:hover {
     </h4>
 
     <div class="d-flex justify-content-center mb-3 ">
-        <img src="" alt="User" class="rounded-circle" style="width: 60px; height: 60px;">
-    </div>
+    <img
+                            src="<?php echo htmlspecialchars($photo); ?>"
+                            alt="Apprenant"
+                            class="img-fluid rounded-circle"
+                            style="width: 60px; height: 60px; object-fit: cover;"
+                        />    </div>
 
     <div class="nav flex-column">
         <li class="nav-item mb-3">

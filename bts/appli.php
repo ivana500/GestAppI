@@ -2,12 +2,17 @@
 session_start();  
 if (!isset($_SESSION['nom']) || !isset($_SESSION['prenom'])) {
    
-    header("Location: index.php");
+    header("Location: connexion.php");
     exit();
 }
 
 $nom = $_SESSION['nom'];
 $prenom = $_SESSION['prenom'];
+
+if (!isset($_SESSION['role']) || $_SESSION['role'] != 'admin') {
+    header("Location: index.php");  
+    exit();
+}
 ?>
 <?php
 
@@ -21,7 +26,6 @@ if (!isset($_SESSION['theme'])) {
 }
 
 $themeClass = $_SESSION['theme'] === 'dark' ? 'dark-theme' : 'light-theme';
-$notificationsStatus = $_SESSION['notifications'] ? 'Activées' : 'Désactivées';
 ?>
 
 
@@ -37,7 +41,6 @@ if (!isset($_SESSION['theme'])) {
 }
 
 $themeClass = $_SESSION['theme'] === 'dark' ? 'dark-theme' : 'light-theme';
-$notificationsStatus = $_SESSION['notifications'] ? 'Activées' : 'Désactivées';
 ?>
 
 <?php

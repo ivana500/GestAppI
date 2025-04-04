@@ -1,78 +1,65 @@
 <?php
-session_start();  
-if (!isset($_SESSION['nom']) || !isset($_SESSION['prenom'])) {
-   
-    header("Location: connexion.php");
-    exit();
-}
+require_once '../Fonctions/db_connection.php';
+require_once '../Fonctions/fonctions.php';
 
-$nom = $_SESSION['nom'];
-$prenom = $_SESSION['prenom'];
 
-if (!isset($_SESSION['role']) || $_SESSION['role'] != 'administrateur') {
-    header("Location: index.php");  
-    exit();
-}
-?>
 
-<?php
 
-require_once 'Fonctions/db_connection.php';
-require_once 'Fonctions/fonctions.php';
+if (isset($_GET['code'])) {
+    $code = $_GET['code'];
 
-if (isset($_GET['matricule'])) {
-    $code = $_GET['matricule'];
     $conn = getConnection();
-    $sql = "SELECT * FROM formateur WHERE matricule = ?";
+
+    $sql = "SELECT * FROM Apprenant WHERE code = ?";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param('s', $code);  
+    $stmt->bind_param('s', $code);
     $stmt->execute();
     $result = $stmt->get_result();
 
     if ($result->num_rows > 0) {
-        $formateurs = $result->fetch_assoc();  
+        $apprenant = $result->fetch_assoc();  // Récupérer les données
     } else {
-        echo "Aucun formateur trouvé avec ce matricule.";
+        echo "Aucun apprenant trouvé avec ce code.";
         exit;
     }
 
-
-
+    
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['modifier'])) {
+       
         $nomAp = $_POST['nomAp'];
         $prenomAp = $_POST['prenomAp'];
         $email = $_POST['email'];
         $telephone = $_POST['telephone'];
-        $specialite = $_POST['specialite'];
-        $code = $_POST['matricule'];   
-
-        $photo = $formateurs['photo'];  
+        $code = $_POST['code'];  
+        
+        $photo = $apprenant['photo'];  
 
         if (isset($_FILES['photo']) && $_FILES['photo']['error'] === UPLOAD_ERR_OK) {
+          
             $targetDir = "uploads/";
             $fileName = basename($_FILES['photo']['name']);
             $targetFile = $targetDir . $fileName;
             move_uploaded_file($_FILES['photo']['tmp_name'], $targetFile);
-            $photo = $fileName; 
+            $photo = $fileName;  
         }
 
-       
-        $updateSql = "UPDATE formateur SET nomForm = ?, prenomForm = ?, email = ?, telephone = ?, specialite = ?, photo = ? WHERE matricule = ?";
+        $updateSql = "UPDATE Apprenant SET nomAp = ?, prenomAp = ?, email = ?, telephone = ?, photo = ? WHERE code = ?";
         $stmt = $conn->prepare($updateSql);
-        $stmt->bind_param('sssssss', $nomAp, $prenomAp, $email, $telephone, $specialite, $photo, $code);
+        $stmt->bind_param('ssssss', $nomAp, $prenomAp, $email, $telephone, $photo, $code);
 
         if ($stmt->execute()) {
-            header("Location: formateur.php");  
+            header("Location: apprenant.php");
             exit;
         } else {
-            echo "Erreur lors de la mise à jour du formateur.";
+            echo "Erreur lors de la mise à jour de l'apprenant.";
         }
 
         $stmt->close();
     }
+
     $conn->close();
 } else {
-    header("Location: formateur.php");
+    header("Location: apprenant.php");
     exit;
 }
 ?>
@@ -196,55 +183,20 @@ table th:hover {
 </a>          </div>
 
     <div class="nav flex-column">
-        <li class="nav-item mb-3">
-        <a class="nav-link text-light " href="apprenant.php">
-        <i class="fas fa-list me-2 ">   </i>Listes Apprenants
+    <li class="nav-item mb-3">
+            <a class="nav-link text-dark " href="profilA.php">
+                <i class="fas fa-list me-2 bg-light"></i>Profil
             </a>
         </li>
-        
+    
         <li class="nav-item mb-3">
-            <a class="nav-link text-light" href="formateur.php">
-                <i class="fas fa-list me-2"></i>Listes Formateurs
-            </a>
-        </li>
-        <li class="nav-item mb-3">
-            <a class="nav-link text-light" href="assiduite.php">
-                <i class="fas fa-list me-2"></i>Listes Assiduité
-            </a>
-        </li>
-        <li class="nav-item mb-3">
-            <a class="nav-link text-light" href="cours.php">
-                <i class="fas fa-list me-2"></i>Listes Cours
-            </a>
-        </li>
-        <li class="nav-item mb-3">
-            <a class="nav-link text-light" href="emploiTemps.php">
+            <a class="nav-link text-dark" href="emploiT.php">
                 <i class="fas fa-calendar me-2"></i>Emploi du Temps
             </a>
         </li>
         <li class="nav-item mb-3">
-            <a class="nav-link text-light" href="comptabilite.php">
-                <i class="fas fa-list me-2"></i>Listes Paiements
-            </a>
-        </li>
-        <li class="nav-item mb-3">
-            <a class="nav-link text-light" href="rapport.php">
+            <a class="nav-link text-dark" href="rapportA.php">
                 <i class="fas fa-file-alt me-2"></i>Affichage des Rapports
-            </a>
-        </li>
-        <li class="nav-item mb-3">
-            <a class="nav-link text-light" href="util.php">
-                <i class="fas fa-users me-2"></i>Gestion des Utilisateurs
-            </a>
-        </li>
-        <li class="nav-item mb-3">
-            <a class="nav-link text-light" href="sauvegarde.php">
-                <i class="fas fa-database me-2"></i>Sauvegarde des Données
-            </a>
-        </li>
-        <li class="nav-item mb-3">
-            <a class="nav-link text-light" href="appli.php">
-                <i class="fas fa-tools me-2"></i>Paramètres de l'Application
             </a>
         </li>
     </div>
@@ -254,43 +206,37 @@ table th:hover {
 <body>
 
 <div class="container mt-5">
-    <h2>Modifier le Formateur</h2>
+    <h2>Modifier l'Apprenant</h2>
 
-    <form action="" method="POST" enctype="multipart/form-data">
-    <div class="mb-3">
-            <label for="matricule" class="form-label">Matricule</label>
-            <input type="text" class="form-control" id="matricule" name="matricule" value="<?= $formateurs['matricule'] ?>" required>
+    <form action="traiteApp.php?code=<?= $apprenant['code'] ?>" method="POST" enctype="multipart/form-data">
+        <div class="mb-3">
+            <label for="code" class="form-label">Code</label>
+            <input type="text" class="form-control" id="code" name="code" value="<?= $apprenant['code'] ?>" readonly required>
         </div>
-        
         <div class="mb-3">
             <label for="nomAp" class="form-label">Nom</label>
-            <input type="text" class="form-control" id="nomAp" name="nomAp" value="<?= $formateurs['nomForm'] ?>" required>
+            <input type="text" class="form-control" id="nomAp" name="nomAp" value="<?= $apprenant['nomAp'] ?>" required>
         </div>
 
         <div class="mb-3">
             <label for="prenomAp" class="form-label">Prénom</label>
-            <input type="text" class="form-control" id="prenomAp" name="prenomAp" value="<?= $formateurs['prenomForm'] ?>" required>
+            <input type="text" class="form-control" id="prenomAp" name="prenomAp" value="<?= $apprenant['prenomAp'] ?>" required>
         </div>
 
         <div class="mb-3">
             <label for="email" class="form-label">Email</label>
-            <input type="email" class="form-control" id="email" name="email" value="<?= $formateurs['email'] ?>" required>
+            <input type="email" class="form-control" id="email" name="email" value="<?= $apprenant['email'] ?>" required>
         </div>
 
         <div class="mb-3">
             <label for="telephone" class="form-label">Téléphone</label>
-            <input type="tel" class="form-control" id="telephone" name="telephone" value="<?= $formateurs['telephone'] ?>" required>
-        </div>
-
-        <div class="mb-3">
-            <label for="specialite" class="form-label">Specialite</label>
-            <input type="text" class="form-control" id="specialite" name="specialite" value="<?= $formateurs['specialite'] ?>" required>
+            <input type="tel" class="form-control" id="telephone" name="telephone" value="<?= $apprenant['telephone'] ?>" required>
         </div>
 
         <div class="mb-3">
             <label for="photo" class="form-label">Photo</label>
             <input type="file" class="form-control" id="photo" name="photo">
-            <small>Actuelle: <img src="uploads/<?= $formateurs['photo'] ?>" alt="Photo" style="width: 50px; height: 50px;"></small>
+            <small>Actuelle: <img src="uploads/<?= $apprenant['photo'] ?>" alt="Photo" style="width: 50px; height: 50px;"></small>
         </div>
 
         <button type="submit" name="modifier" class="btn btn-warning">Sauvegarder les modifications</button>

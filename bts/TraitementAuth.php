@@ -21,6 +21,7 @@ if (isset($_POST['username']) && isset($_POST['password'])) {
         $_SESSION['id'] = $ligneAdmin['id'];
         $_SESSION['nom'] = $ligneAdmin['nomAd'];
         $_SESSION['prenom'] = $ligneAdmin['prenomAd'];
+        $_SESSION['role'] = "admin";
         var_dump($_SESSION); 
         redirection("dasboard.php");
     }
@@ -40,6 +41,7 @@ if (isset($_POST['username']) && isset($_POST['password'])) {
             $_SESSION['email'] = $ligneFormateur['email'];
             $_SESSION['telephone'] = $ligneFormateur['telephone'];
             $_SESSION['photo'] = $ligneFormateur['photo'];
+            $_SESSION['role'] = "formateur";
             redirection("Formateur/profil.php");
         }
        
@@ -59,6 +61,7 @@ if (isset($_POST['username']) && isset($_POST['password'])) {
                 $_SESSION['dateIns'] = $ligneApprenant['dateIns'];
                 $_SESSION['telephone'] = $ligneApprenant['telephone'];
                 $_SESSION['photo'] = $ligneApprenant['photo'];
+                $_SESSION['role'] = "apprenant";
                 redirection("Apprenant/profilA.php");
             } else {
                

@@ -14,6 +14,10 @@ if (!isset($_SESSION['theme'])) {
 }
 
 $themeClass = $_SESSION['theme'] === 'dark' ? 'dark-theme' : 'light-theme';
+if (!isset($_SESSION['role']) || $_SESSION['role'] != 'admin') {
+    header("Location: index.php");  
+    exit();
+}
 ?>
 
 <?php

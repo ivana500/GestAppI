@@ -2,12 +2,16 @@
 session_start();  
 if (!isset($_SESSION['nom']) || !isset($_SESSION['prenom'])) {
    
-    header("Location: index.php");
+    header("Location: ../connexion.php");
     exit();
 }
 
 $nom = $_SESSION['nom'];
 $prenom = $_SESSION['prenom'];
+if (!isset($_SESSION['role']) || $_SESSION['role'] != 'formateur') {
+    header("Location: ../index.php");  
+    exit();
+}
 ?>
 
 <!DOCTYPE html>

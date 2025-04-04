@@ -2,7 +2,12 @@
 session_start();
 
 if (!isset($_SESSION['nom']) || !isset($_SESSION['prenom']) || !isset($_SESSION['email']) || !isset($_SESSION['telephone']) || !isset($_SESSION['dateIns'])) {
-    header("Location: index.php");
+    header("Location: ../connexion.php");
+    exit();
+}
+
+if (!isset($_SESSION['role']) || $_SESSION['role'] != 'apprenant') {
+    header("Location: ../index.php");
     exit();
 }
 
@@ -12,9 +17,60 @@ $email = $_SESSION['email'];
 $telephone = $_SESSION['telephone'];
 $date = $_SESSION['dateIns'];
 
-$photo = isset($_SESSION['photo']) && !empty($_SESSION['photo']) ? $_SERVER['localhost'] . '/BTS/bts/uploads/' . $_SESSION['photo'] : 'uploads/default-photo.PNG';
+// Chemin de la photo
+$photo = isset($_SESSION['photo']) && !empty($_SESSION['photo']) ? 
+         'http://' . $_SERVER['HTTP_HOST'] . '/GestAppI/bts/uploads/' . $_SESSION['photo'] : 
+         'http://' . $_SERVER['HTTP_HOST'] . '/GestAppI/bts/uploads/default-photo.PNG';
 ?>
 
+<?php
+include('../Fonctions/db_connection.php');
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_FILES['photo'])) {
+
+    $photo = $_FILES['photo'];
+    $photoName = $_SESSION['prenom'] . '_' . $_SESSION['nom'] . '.' . pathinfo($photo['name'], PATHINFO_EXTENSION); // Nom unique pour éviter les conflits
+    $photoTmp = $photo['tmp_name'];
+    $photoSize = $photo['size'];
+    $photoError = $photo['error'];
+
+    if ($photoError === 0) {
+
+        if ($photoSize <= 5 * 1024 * 1024) { // Vérifier que la taille est inférieure ou égale à 5MB
+            // Chemin de destination de la photo
+            $photoDestination = '../uploads/' . $photoName;  // Le chemin d'accès où stocker la photo (dossier uploads)
+
+            // Déplace le fichier téléchargé dans le dossier uploads
+            if (move_uploaded_file($photoTmp, $photoDestination)) {
+
+                $conn = getConnection();
+
+                $stmt = $conn->prepare("UPDATE Apprenant SET photo = ? WHERE login = ?");
+                $stmt->bind_param("ss", $photoName, $_SESSION['login']);  // Utilisation du login pour identifier l'apprenant
+                if ($stmt->execute()) {
+
+                    $_SESSION['photo'] = $photoName;
+                    $_SESSION['success_message'] = "La photo a été modifiée avec succès!";
+                } else {
+                    $_SESSION['error_message'] = "Erreur lors de la mise à jour de la photo.";
+                }
+            } else {
+                $_SESSION['error_message'] = "Une erreur est survenue lors du téléchargement de la photo.";
+            }
+        } else {
+            $_SESSION['error_message'] = "La taille du fichier est trop grande. (maximum 5MB)";
+        }
+    } else {
+        $_SESSION['error_message'] = "Une erreur est survenue lors du téléchargement de la photo.";
+    }
+}
+
+// **Réduire la logique de redirection pour éviter les boucles infinies**
+// Si la page actuelle est celle de profilA.php, évitez de rediriger à nouveau vers cette page
+$referer = isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : 'profilA.php';
+header("Location: " . $referer);
+exit();
+?>
 
 <!DOCTYPE html>
 <html lang="fr">
@@ -109,7 +165,12 @@ table th:hover {
     </h4>
 
     <div class="d-flex justify-content-center mb-3 ">
-        <img src="" alt="User" class="rounded-circle" style="width: 60px; height: 60px;">
+    <img
+                            src="<?php echo htmlspecialchars($photo); ?>"
+                            alt="Apprenant"
+                            class="img-fluid rounded-circle"
+                            style="width: 60px; height: 60px; object-fit: cover;"
+                        />
     </div>
 
     <div class="nav flex-column">
@@ -175,12 +236,29 @@ table th:hover {
 
         <!-- Button to modify the profile -->
         <div class="text-center">
-            <button
-                class="btn btn-warning rounded-5 shadow"
-                onclick="alert('Modifier fonctionnalité non implémentée')"
-            >
-                <i class="fas fa-edit me-2"></i>Modifier Profil
-            </button>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modifierPhotoModal">Modifier la photo</button>
+
+        <div class="modal fade" id="modifierPhotoModal" tabindex="-1" aria-labelledby="modifierPhotoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modifierPhotoModalLabel">Modifier la photo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Formulaire de modification de photo -->
+                <form action="modifier_photo.php" method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="photo" class="form-label">Choisir une nouvelle photo</label>
+                        <input type="file" class="form-control" id="photo" name="photo" required>
+                    </div>
+                    <button type="submit" class="btn btn-success">Enregistrer la modification</button>
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>
         </div>
     </div>
 
